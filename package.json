@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
     "lint": "next lint",
-    "start:proxy": "python3 backend/main.py",
+    "start:proxy": "/opt/venv/bin/python3 backend/main.py",
     "start:full": "concurrently \"npm run start\" \"npm run start:proxy\""
   },
   "dependencies": {
