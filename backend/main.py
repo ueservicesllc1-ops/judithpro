@@ -13,7 +13,7 @@ import json
 from audio_processor_real import audio_processor
 from chord_analyzer import ChordAnalyzer
 from models import ProcessingTask, TaskStatus
-from database import get_db, init_db
+# from database import get_db, init_db  # Commented out - not using database
 from b2_storage import b2_storage
 import librosa
 import numpy as np
@@ -47,10 +47,10 @@ app.add_middleware(
 # Static files (commented for demo)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Initialize database and B2
+# Initialize B2 only (database not used)
 @app.on_event("startup")
 async def startup_event():
-    init_db()
+    # init_db()  # Commented out - not using database
     await b2_storage.initialize()
 
 # Audio processor instance (already imported)
