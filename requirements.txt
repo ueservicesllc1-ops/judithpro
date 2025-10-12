@@ -31,9 +31,8 @@ pydantic>=2.0.0
 requests>=2.31.0
 yt-dlp>=2023.11.16
 
-# Database - Opcional
-# sqlalchemy==2.0.23
-# psycopg2-binary==2.9.9
+# Database
+sqlalchemy==2.0.23
 
 # Auth - Opcional
 # python-jose[cryptography]==3.3.0
