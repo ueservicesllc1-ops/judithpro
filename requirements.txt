@@ -1,0 +1,47 @@
+# Build tools - DEBEN instalarse primero
+setuptools>=70.0.0
+wheel>=0.42.0
+Cython>=3.0.0
+
+# Backend Dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Audio Processing - Versiones precompiladas
+numpy>=1.24.0,<2.0.0
+scipy>=1.11.0,<2.0.0
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+ffmpeg-python==0.2.0
+# pyrubberband==0.3.0  # Comentado: no compatible con Python 3.12
+
+# ML/AI - Necesario para separación de audio (CPU-only para reducir tamaño)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.0.0+cpu
+torchaudio==2.0.0+cpu
+spleeter==2.4.0
+demucs>=4.0.0
+
+# Utilities
+aiofiles==23.2.1
+httpx>=0.24.0
+pydantic>=2.0.0
+requests>=2.31.0
+yt-dlp>=2023.11.16
+
+# Database - Opcional
+# sqlalchemy==2.0.23
+# psycopg2-binary==2.9.9
+
+# Auth - Opcional
+# python-jose[cryptography]==3.3.0
+# passlib[bcrypt]==1.7.4
+
+# Environment
+python-dotenv>=1.0.0
+
+# Storage - Opcional
+# b2sdk==1.21.0
+# boto3==1.34.0

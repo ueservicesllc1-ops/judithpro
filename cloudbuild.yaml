@@ -1,0 +1,28 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA', '.']
+  
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA']
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'judith-app'
+      - '--image=gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=3000'
+      - '--memory=4Gi'
+      - '--cpu=2'
+      - '--max-instances=10'
+      - '--timeout=900'
+
+images:
+  - 'gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA'
