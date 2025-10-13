@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost', 'moises2-production.up.railway.app'],
+    domains: ['localhost', 'moises2-production.up.railway.app', 'judith.life'],
   },
   async rewrites() {
     return [
