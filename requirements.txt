@@ -23,6 +23,7 @@ torch==2.0.0+cpu
 torchaudio==2.0.0+cpu
 spleeter==2.4.0
 demucs>=4.0.0
+diffq==0.2.4
 
 # Utilities
 aiofiles==23.2.1
