@@ -935,104 +935,99 @@ async def analyze_audio(file: UploadFile = File(...)):
 @app.post("/youtube-extract")
 async def extract_youtube_audio(request: Request):
     """
-    Extrae audio de un video de YouTube
+    Extrae audio de un video de YouTube usando RapidAPI
     """
-    # Importar yt-dlp al inicio
     try:
-        import yt_dlp
-    except ImportError:
-        raise HTTPException(
-            status_code=500, 
-            detail="yt-dlp no esta instalado. Ejecuta: pip install yt-dlp"
-        )
-    
-    try:
+        import httpx
+        import re
+        
         data = await request.json()
         youtube_url = data.get("url")
         
         if not youtube_url:
             raise HTTPException(status_code=400, detail="URL de YouTube requerida")
         
-        print(f"[YouTube] Extrayendo audio de: {youtube_url}")
+        print(f"[YouTube API] Extrayendo audio de: {youtube_url}")
         
-        # Crear directorio temporal
-        temp_dir = tempfile.mkdtemp()
-        output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
+        # Extraer video ID de la URL
+        video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', youtube_url)
+        if not video_id_match:
+            raise HTTPException(status_code=400, detail="URL de YouTube inválida")
         
-        # Opciones de yt-dlp - intentar múltiples métodos
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'outtmpl': output_template,
-            'quiet': False,
-            'no_warnings': False,
-            'noplaylist': True,
-            # Intentar con múltiples clientes
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android_embedded', 'android_music', 'android_creator', 'android'],
-                    'skip': ['hls', 'dash']
+        video_id = video_id_match.group(1)
+        print(f"[YouTube API] Video ID: {video_id}")
+        
+        # Obtener API key de variable de entorno
+        rapidapi_key = os.getenv('RAPIDAPI_KEY')
+        if not rapidapi_key:
+            # Fallback: intentar con yt-dlp si no hay API key
+            print("[YouTube API] No RAPIDAPI_KEY found, usando método alternativo")
+            raise HTTPException(
+                status_code=500, 
+                detail="YouTube download no configurado. Por favor sube el archivo MP3 directamente."
+            )
+        
+        # Llamar a RapidAPI
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(
+                'https://youtube-mp36.p.rapidapi.com/dl',
+                params={'id': video_id},
+                headers={
+                    'x-rapidapi-key': rapidapi_key,
+                    'x-rapidapi-host': 'youtube-mp36.p.rapidapi.com'
                 }
-            },
-            # Simular cliente Android Music (menos restrictivo)
-            'user_agent': 'com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 13; en_US)',
-            'http_headers': {
-                'User-Agent': 'com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 13; en_US)',
-            },
-            'nocheckcertificate': True,
-            'extractor_retries': 3,
-            'fragment_retries': 3,
-        }
-        
-        # Extraer audio
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=True)
-            video_title = info.get('title', 'video')
-            duration = info.get('duration', 0)
+            )
             
-            # Encontrar el archivo descargado
-            downloaded_file = None
-            for file in os.listdir(temp_dir):
-                if file.endswith('.mp3'):
-                    downloaded_file = os.path.join(temp_dir, file)
-                    break
+            if response.status_code != 200:
+                print(f"[YouTube API] Error: {response.status_code} - {response.text}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Error al obtener audio: {response.status_code}"
+                )
             
-            if not downloaded_file or not os.path.exists(downloaded_file):
+            result = response.json()
+            print(f"[YouTube API] Respuesta: {result}")
+            
+            if result.get('status') != 'ok':
+                raise HTTPException(status_code=400, detail="No se pudo procesar el video")
+            
+            # Descargar el MP3
+            mp3_url = result.get('link')
+            video_title = result.get('title', 'video')
+            
+            if not mp3_url:
+                raise HTTPException(status_code=500, detail="No se obtuvo el link de descarga")
+            
+            print(f"[YouTube API] Descargando MP3: {mp3_url}")
+            
+            # Descargar el archivo
+            mp3_response = await client.get(mp3_url)
+            
+            if mp3_response.status_code != 200:
                 raise HTTPException(status_code=500, detail="Error al descargar el audio")
             
-            print(f"[YouTube] Audio extraido: {video_title}")
+            audio_data = mp3_response.content
             
-            # Leer el archivo y enviarlo como respuesta
-            with open(downloaded_file, 'rb') as f:
-                audio_data = f.read()
+            print(f"[YouTube API] Audio descargado: {video_title} ({len(audio_data)} bytes)")
             
-            # Limpiar archivos temporales
-            import shutil
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            
-            # Retornar el audio como base64 para enviarlo al frontend
+            # Retornar el audio como base64
             import base64
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
             
             return {
                 "success": True,
                 "title": video_title,
-                "duration": duration,
+                "duration": 0,  # RapidAPI no retorna duración
                 "audioData": audio_base64,
                 "format": "mp3"
             }
     
-    except yt_dlp.utils.DownloadError as e:
-        print(f"[YouTube] Error de descarga: {e}")
-        raise HTTPException(status_code=400, detail=f"Error al descargar video: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[YouTube] Error extrayendo audio: {e}")
+        print(f"[YouTube API] Error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/pitch-shift")
