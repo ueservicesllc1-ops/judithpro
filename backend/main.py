@@ -223,28 +223,54 @@ async def separate_audio_direct(
         error_detail = f"Server error: {str(e)}\n{traceback.format_exc()}"
         raise HTTPException(status_code=500, detail=error_detail)
 
+@app.get("/debug/tasks")
+async def debug_tasks():
+    """Debug endpoint to see all tasks in memory"""
+    tasks_info = {}
+    for task_id, task in tasks_storage.items():
+        tasks_info[task_id] = {
+            "status": task.status,
+            "progress": task.progress,
+            "separation_type": task.separation_type,
+            "has_stems": bool(task.stems) if hasattr(task, 'stems') else False,
+            "error": task.error if hasattr(task, 'error') else None
+        }
+    return {
+        "total_tasks": len(tasks_storage),
+        "tasks": tasks_info
+    }
+
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
     """Get processing status"""
     task = await get_task_status(task_id)
     if not task:
+        print(f"❌ [STATUS] Task not found: {task_id}")
+        print(f"   Available tasks in storage: {list(tasks_storage.keys())}")
         raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Log current status
+    print(f"✅ [STATUS] Task {task_id}: status={task.status}, progress={task.progress}%")
     
     # Return B2 URLs directly (already uploaded to B2)
     stems_urls = None
     if task.status == TaskStatus.COMPLETED and task.stems:
         stems_urls = task.stems  # These are already B2 URLs
+        print(f"✅ [STATUS] Task completed with {len(stems_urls)} stems")
     
-    return {
+    response = {
         "task_id": task_id,
         "status": task.status,
         "progress": task.progress,
         "stems": stems_urls,
+        "error": task.error if hasattr(task, 'error') and task.error else None,
         "bpm": 126,  # Default BPM
         "key": "E",  # Default key
         "timeSignature": "4/4",  # Default time signature
         "duration": "5:00"  # Default duration
     }
+    
+    return response
 
 @app.get("/audio/{path:path}")
 async def serve_audio(path: str):
@@ -353,24 +379,40 @@ async def download_stem(task_id: str, stem_name: str):
 async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = None, hi_fi: bool = False):
     """Background task to process audio"""
     try:
+        print(f"\n{'='*60}")
+        print(f"🚀 [PROCESS] Starting audio processing for task: {task.id}")
+        print(f"   - File: {task.file_path}")
+        print(f"   - Separation type: {task.separation_type}")
+        print(f"   - Custom tracks: {custom_tracks}")
+        print(f"{'='*60}\n")
+        
         # Update task status
         task.status = TaskStatus.PROCESSING
         task.progress = 10
+        tasks_storage[task.id] = task  # Guardar en storage
+        print(f"✅ [PROCESS] Task stored in memory: {task.id}")
         
         # Callback para actualizar progreso
         def update_progress(progress: int, message: str = ""):
-            task.progress = progress
-            print(f"Progress: {progress}% - {message}")
+            # Obtener task del storage para asegurar sincronización
+            current_task = tasks_storage.get(task.id)
+            if current_task:
+                current_task.progress = progress
+                tasks_storage[task.id] = current_task
+            else:
+                task.progress = progress
+                tasks_storage[task.id] = task
+            print(f"📊 [PROGRESS] {progress}% - {message} [Task ID: {task.id}]")
         
         # Determinar qué tracks solicitar
         requested_tracks = None
         
         # 🔥 FIX: Procesar tracks custom (individuales seleccionados)
         if task.separation_type == "custom" and custom_tracks:
-            print(f"🎯 Procesando tracks CUSTOM: {custom_tracks}")
+            print(f"🎯 [PROCESS] Procesando tracks CUSTOM: {custom_tracks}")
             # Filtrar solo los tracks que están en True
             requested_tracks = [track for track, enabled in custom_tracks.items() if enabled]
-            print(f"🎯 Tracks a separar: {requested_tracks}")
+            print(f"🎯 [PROCESS] Tracks a separar: {requested_tracks}")
             
             if len(requested_tracks) == 0:
                 # Si no hay tracks seleccionados, usar todos por defecto
@@ -379,38 +421,57 @@ async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = No
             stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
         
         elif task.separation_type == "vocals-instrumental":
-            print(f"🎤 Procesando modo: vocals-instrumental")
+            print(f"🎤 [PROCESS] Procesando modo: vocals-instrumental")
             requested_tracks = ["vocals", "instrumental"]
             stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
         
         elif task.separation_type == "vocals-drums-bass-other":
-            print(f"🎵 Procesando modo: vocals-drums-bass-other (4 stems)")
+            print(f"🎵 [PROCESS] Procesando modo: vocals-drums-bass-other (4 stems)")
             requested_tracks = ["vocals", "drums", "bass", "other"]
             stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
         
         else:
             # Por defecto, separar todos los stems
-            print(f"🎵 Procesando modo por defecto: 4 stems")
+            print(f"🎵 [PROCESS] Procesando modo por defecto: 4 stems")
             requested_tracks = ["vocals", "drums", "bass", "other"]
             stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
         
+        print(f"\n✅ [PROCESS] Demucs separation completed! Got {len(stems)} stems")
+        print(f"   Stems: {list(stems.keys())}")
+        
         # Upload stems to B2 for online playback
-        print(f"Uploading {len(stems)} stems to B2...")
+        print(f"\n☁️ [PROCESS] Uploading {len(stems)} stems to B2...")
         task.progress = 85
+        tasks_storage[task.id] = task
+        
         b2_stems = await upload_stems_to_b2(stems, task.id)
+        
+        print(f"✅ [PROCESS] B2 upload completed! {len(b2_stems)} stems uploaded")
+        
         task.progress = 95
+        tasks_storage[task.id] = task
         
         # Update task with B2 URLs
         task.stems = b2_stems
         task.status = TaskStatus.COMPLETED
         task.progress = 100
+        tasks_storage[task.id] = task
         
-        print(f"Audio processing completed with B2 URLs: {b2_stems}")
+        print(f"\n{'='*60}")
+        print(f"✅ [PROCESS] Audio processing COMPLETED for task: {task.id}")
+        print(f"   - Status: {task.status}")
+        print(f"   - Progress: {task.progress}%")
+        print(f"   - Stems: {len(b2_stems)}")
+        print(f"   - B2 URLs: {list(b2_stems.keys())}")
+        print(f"{'='*60}\n")
         
     except Exception as e:
         task.status = TaskStatus.FAILED
         task.error = str(e)
-        print(f"Processing error: {e}")
+        tasks_storage[task.id] = task
+        print(f"\n❌ [PROCESS] Processing ERROR for task {task.id}: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def upload_stems_to_b2(stems: Dict[str, str], task_id: str) -> Dict[str, str]:
     """Upload separated stems to B2 and return URLs"""

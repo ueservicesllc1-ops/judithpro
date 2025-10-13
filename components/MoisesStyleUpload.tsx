@@ -126,6 +126,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
           setB2ProxyOnline(pythonServerOnline);
         }
       } catch (error) {
+        // Silenciar el error - el proxy B2 no es crítico
         setB2ProxyOnline(false);
       }
     };
@@ -346,22 +347,32 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
 
   const waitForSeparationCompletion = async (taskId: string, file: File, user: any) => {
     const maxAttempts = 300; // 15 minutos máximo para Railway
-    let attempts = 0;
-
-  const poll = async () => {
-    try {
-      // Usar el proxy de Next.js en vez de ir directo al backend
-      const statusResponse = await fetch(`/api/status/${taskId}`);
+    const estimatedTimeSeconds = 240; // 4 minutos estimados
+    const startTime = Date.now();
+    
+    for (let attempts = 0; attempts < maxAttempts; attempts++) {
+      try {
+        // Usar el proxy de Next.js en vez de ir directo al backend
+        const statusResponse = await fetch(`/api/status/${taskId}`);
         const statusResult = await statusResponse.json();
 
-        // Usar el progreso del backend
-        const backendProgress = statusResult.progress || 0;
-        const totalProgress = 60 + (backendProgress * 0.3); // 60% base + 30% del backend
-        setUploadProgress(Math.min(totalProgress, 95)); // Máximo 95% hasta completar
+        // Calcular progreso estimado basado en tiempo transcurrido
+        const elapsedSeconds = (Date.now() - startTime) / 1000;
+        const timeBasedProgress = 10 + Math.min((elapsedSeconds / estimatedTimeSeconds) * 80, 80); // 10% → 90% en 4 min
         
-        setUploadMessage(`Procesando con IA... ${backendProgress}% (${attempts + 1}/300)`);
+        // Usar el progreso estimado, pero nunca superar el 90% hasta que el backend confirme
+        let displayProgress = Math.min(Math.floor(timeBasedProgress), 90);
+        
+        // Solo pasar del 90% cuando el backend realmente complete
+        const backendProgress = statusResult.progress || 0;
+        if (backendProgress >= 95) {
+          displayProgress = backendProgress; // 95%, 100%
+        }
+        
+        setUploadProgress(displayProgress);
+        setUploadMessage(`Procesando con IA... ${displayProgress}% (${Math.floor(elapsedSeconds)}s)`);
 
-        console.log('[POLLING] Status result:', statusResult);
+        console.log(`[POLLING] Attempt ${attempts + 1}/${maxAttempts} - Display: ${displayProgress}% - Backend: ${backendProgress}% - Time: ${Math.floor(elapsedSeconds)}s - Status:`, statusResult);
 
         if (statusResult.status === 'completed') {
           console.log('[COMPLETED] Processing completed! Saving to Firestore...');
@@ -448,28 +459,28 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
             setUploadMessage('');
             setUploadedFile(null);
           }, 1000);
+          
+          // Salir del loop cuando termine exitosamente
+          return;
 
         } else if (statusResult.status === 'failed') {
           throw new Error(`Separación falló: ${statusResult.error || 'Error desconocido'}`);
-        } else {
-          attempts++;
-          console.log(`Polling attempt ${attempts}/${maxAttempts}, status: ${statusResult.status}, progress: ${backendProgress}%`);
-          
-          if (attempts < maxAttempts) {
-            setTimeout(poll, 5000); // Poll cada 5 segundos para reducir carga
-          } else {
-            throw new Error(`Separación tardó demasiado tiempo (${maxAttempts} intentos = ${maxAttempts * 3 / 60} minutos). Último estado: ${statusResult.status}, progreso: ${backendProgress}%`);
-          }
         }
+        
+        // Esperar 3 segundos antes del siguiente intento
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
       } catch (error) {
         console.error('Error polling status:', error);
         setUploadMessage(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
         setIsUploading(false);
         setUploadProgress(0);
+        throw error;
       }
-    };
-
-    await poll();
+    }
+    
+    // Si llegamos aquí, se acabó el tiempo
+    throw new Error(`Separación tardó demasiado tiempo (${maxAttempts} intentos = ${maxAttempts * 3 / 60} minutos)`);
   };
 
   return (

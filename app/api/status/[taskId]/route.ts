@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Deshabilitar caché para este endpoint
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { taskId: string } }
@@ -12,8 +16,15 @@ export async function GET(
     
     console.log('🔍 Checking status for task:', taskId)
     
-    // Forward the request to the Python backend
-    const response = await fetch(`${backendUrl}/status/${taskId}`)
+    // Forward the request to the Python backend - SIN CACHE
+    const response = await fetch(`${backendUrl}/status/${taskId}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
     
     if (!response.ok) {
       const errorText = await response.text()
@@ -24,7 +35,15 @@ export async function GET(
     }
     
     const data = await response.json()
-    return NextResponse.json(data)
+    
+    // Retornar sin caché
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
     
   } catch (error) {
     console.error('Error in /api/status:', error)

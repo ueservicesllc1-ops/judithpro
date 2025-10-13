@@ -67,10 +67,11 @@ class AudioProcessor:
                         if match:
                             demucs_progress = int(match.group(1))
                             # Mapear progreso de Demucs (0-100) a nuestro rango (40-70)
-                            our_progress = 40 + (demucs_progress * 0.3)
-                            task_callback(int(our_progress), f"Demucs: {demucs_progress}%")
-                    except:
-                        pass
+                            our_progress = 40 + int(demucs_progress * 0.3)
+                            task_callback(our_progress, f"Demucs: {demucs_progress}%")
+                            print(f"[Progress] Updated: {our_progress}%")
+                    except Exception as e:
+                        print(f"[Progress] Error parsing: {e}")
             
             await process.wait()
             

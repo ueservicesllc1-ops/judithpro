@@ -51,11 +51,16 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
     try {
       console.log('☁️ Saving separated song to B2 and Firestore...');
       
+      // Mensaje de progreso
+      setSeparationProgress(90);
+      setSeparationMessage('Guardando en la nube...');
+      
       // Subir archivo original a B2 (si no está ya)
       const uploadProgressCallback = (progress: any) => {
         console.log('Progreso de subida original:', progress.progress);
       };
 
+      console.log('📤 Uploading original file to B2...');
       const uploadResult = await realB2Service.uploadAudioFile(
         selectedFile!,
         user!.uid,
@@ -66,6 +71,9 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
       
       const downloadUrl = typeof uploadResult === 'string' ? uploadResult : (uploadResult as any).downloadUrl || uploadResult;
       console.log('✅ Archivo original subido a B2:', downloadUrl);
+      
+      setSeparationProgress(95);
+      setSeparationMessage('Guardando información...');
       
       // Guardar información en Firestore
       const song = {
@@ -91,12 +99,14 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
         separationTaskId: taskId
       };
 
+      console.log('💾 Saving to Firestore...');
       const firestoreSongId = await saveSong(song);
       console.log('✅ Información guardada en Firestore con ID:', firestoreSongId);
       
       // Actualizar songData con las pistas reales separadas
       const updatedSongData = {
         ...songData,
+        id: firestoreSongId,
         stems: statusResult.stems || {
           vocals: statusResult.vocals_url,
           instrumental: statusResult.instrumental_url,
@@ -113,32 +123,49 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
         firestoreId: firestoreSongId
       };
       
+      console.log('✅ Canción completamente guardada:', updatedSongData);
+      
       // Actualizar los datos de la canción
       setUploadedSongData(updatedSongData);
       
-      // Cerrar modal de separación y mostrar editor
+      setSeparationProgress(100);
+      setSeparationMessage('¡Completado!');
+      
+      // Cerrar modales y notificar al componente padre
       setIsProcessingSeparation(false);
       setShowSeparationModal(false);
-      // setShowAudioEditor(true); // REMOVED
+      
+      // Llamar callback para actualizar la lista de canciones
+      if (onUploadComplete) {
+        console.log('📢 Notificando al componente padre...');
+        onUploadComplete(updatedSongData);
+      }
+      
+      // Cerrar el modal de subida
+      setTimeout(() => {
+        console.log('🚪 Cerrando modal de subida...');
+        handleClose();
+      }, 500);
       
     } catch (error) {
       console.error('❌ Error saving to cloud:', error);
       setIsProcessingSeparation(false);
-      alert(`❌ Error saving to cloud: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setSeparationProgress(0);
+      setSeparationMessage('');
+      alert(`❌ Error guardando en la nube: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
   const pollSeparationStatus = async (taskId: string, songData: any) => {
     const maxAttempts = 120; // 120 intentos máximo (2 minutos para Demucs)
-    let attempts = 0;
     
-    const poll = async () => {
+    for (let attempts = 0; attempts < maxAttempts; attempts++) {
       try {
         const backendUrl = getBackendUrl();
         const statusResponse = await fetch(`${backendUrl}/status/${taskId}`);
         const statusResult = await statusResponse.json();
         
-        console.log(`🔄 Separation status (attempt ${attempts + 1}):`, statusResult);
+        console.log(`🔄 Separation status (attempt ${attempts + 1}/${maxAttempts}):`, statusResult);
         
         // Actualizar progreso y mensaje
         setSeparationProgress(statusResult.progress || 0);
@@ -168,23 +195,21 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
           return { success: true, taskId, stems: statusResult.stems };
           
         } else if (statusResult.status === 'failed') {
-          throw new Error('Audio separation failed');
-        } else if (attempts < maxAttempts) {
-          // Continuar polling
-          attempts++;
-          setTimeout(poll, 1000); // Poll cada segundo
-        } else {
-          throw new Error('Audio separation timeout');
+          throw new Error(`Audio separation failed: ${statusResult.error || 'Unknown error'}`);
         }
+        
+        // Esperar 1 segundo antes del siguiente intento
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
         console.error('❌ Error polling separation status:', error);
         setIsProcessingSeparation(false);
         throw error;
       }
-    };
+    }
     
-    return await poll();
+    // Si llegamos aquí, se acabó el tiempo
+    throw new Error('Audio separation timeout - proceso tomó más de 2 minutos');
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
