@@ -291,7 +291,7 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
       
       // Llamar al backend REAL para separación directa
       const backendUrl = getBackendUrl();
-      const separationResponse = await fetch(`${backendUrl}/separate`, {
+      const separationResponse = await fetch('/api/separate', {
         method: 'POST',
         body: formData
       });

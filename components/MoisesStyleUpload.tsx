@@ -128,11 +128,10 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
       setUploadProgress(20);
       setUploadMessage('📤 Enviando archivo al servidor...');
 
-      const backendUrl = getBackendUrl();
-      console.log('🌐 Enviando request a:', `${backendUrl}/separate`);
+      console.log('🌐 Enviando request a: /api/separate');
       
-      // Llamar al backend original que ya tiene CORS configurado
-      const response = await fetch(`${backendUrl}/separate`, {
+      // Llamar al endpoint de Next.js que hace proxy al backend Python
+      const response = await fetch('/api/separate', {
         method: 'POST',
         body: formData,
       });
