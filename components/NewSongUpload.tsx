@@ -9,6 +9,7 @@ import { saveSong } from '@/lib/firestore';
 import realB2Service from '@/lib/realB2Service';
 import AudioSeparationModal from './AudioSeparationModal';
 import { getBackendUrl } from '@/lib/config';
+import AdminModalLabel from './AdminModalLabel';
 
 interface NewSongUploadProps {
   isOpen: boolean;
@@ -441,6 +442,7 @@ const NewSongUpload: React.FC<NewSongUploadProps> = ({ isOpen, onClose, onUpload
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <AdminModalLabel modalName="NewSongUpload" />
       <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center space-x-2">

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { X, Play, Pause, RotateCcw, Music, Volume2, Target, Upload, Loader, Download, Square } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getBackendUrl } from '@/lib/config'
+import AdminModalLabel from './AdminModalLabel'
 
 interface PitchTempoModalProps {
   isOpen: boolean
@@ -442,6 +443,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+      <AdminModalLabel modalName="PitchTempoModal" />
       <div className="bg-gray-900 w-[90vw] h-[90vh] mx-4 flex flex-col border border-gray-600">
         {/* Header */}
         <div className="bg-black h-16 flex items-center justify-between px-6 border-b border-gray-600">

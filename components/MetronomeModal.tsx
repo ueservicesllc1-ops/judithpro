@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { X, Play, Pause } from 'lucide-react'
 import DJKnob from './DJKnob'
+import AdminModalLabel from './AdminModalLabel'
 
 interface MetronomeModalProps {
   isOpen: boolean
@@ -326,6 +327,7 @@ const MetronomeModal: React.FC<MetronomeModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000]">
+      <AdminModalLabel modalName="MetronomeModal" />
       <div className="bg-gray-900 border-2 border-gray-700 p-6 max-w-6xl w-full mx-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Star, Gift, Zap, Crown } from 'lucide-react'
 import Image from 'next/image'
+import AdminModalLabel from './AdminModalLabel'
 
 interface HeroPopupProps {
   isOpen: boolean
@@ -32,6 +33,7 @@ const HeroPopup: React.FC<HeroPopupProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      <AdminModalLabel modalName="HeroPopup" />
       {/* Backdrop con efecto de blur y partículas */}
       <div 
         className="absolute inset-0 bg-black/90 backdrop-blur-sm"

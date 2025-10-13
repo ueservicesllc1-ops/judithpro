@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { X, Youtube, Download, Scissors, Loader2 } from 'lucide-react'
+import AdminModalLabel from './AdminModalLabel'
 
 interface YoutubeExtractModalProps {
   isOpen: boolean
@@ -123,6 +124,7 @@ const YoutubeExtractModal: React.FC<YoutubeExtractModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000]">
+      <AdminModalLabel modalName="YoutubeExtractModal" />
       <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-8 max-w-2xl w-full mx-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

@@ -11,6 +11,7 @@ import React, { useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { saveSong } from '../lib/firestore';
 import { getBackendUrl } from '../lib/config';
+import AdminModalLabel from './AdminModalLabel';
 
 interface MoisesStyleUploadProps {
   onUploadComplete?: (songData: any) => void;
@@ -331,6 +332,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-gray-900 shadow-lg">
+      <AdminModalLabel modalName="MoisesStyleUpload" />
       <div className="space-y-6">
 
         {/* File Upload */}

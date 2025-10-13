@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react'
 import { X, Upload, Download, Play, Pause, Square } from 'lucide-react'
 import DJKnob from './DJKnob'
 import ProfessionalEQ from './ProfessionalEQ'
+import AdminModalLabel from './AdminModalLabel'
 
 interface VolumeEQModalProps {
   isOpen: boolean
@@ -480,6 +481,7 @@ const VolumeEQModal: React.FC<VolumeEQModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000]">
+      <AdminModalLabel modalName="VolumeEQModal" />
       <div className="bg-gray-900 border-2 border-gray-700 p-6 w-auto mx-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getBackendUrl } from '@/lib/config';
+import AdminModalLabel from './AdminModalLabel';
 import { 
   ArrowLeft, 
   Music, 
@@ -433,6 +434,7 @@ const SimpleMixer: React.FC<SimpleMixerProps> = ({ isOpen, onClose, songData }) 
 
   return (
     <div className="fixed inset-0 bg-gray-950 flex flex-col">
+      <AdminModalLabel modalName="SimpleMixer" />
       {/* Top Bar - Studio One Style */}
       <div className="bg-gray-900 border-b border-gray-700 px-4 py-2">
         <div className="flex items-center justify-between">

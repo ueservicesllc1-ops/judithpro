@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react'
 import { X, Upload, Music2, Loader2 } from 'lucide-react'
+import AdminModalLabel from './AdminModalLabel'
 
 interface ChordAnalysisModalProps {
   isOpen: boolean
@@ -103,6 +104,7 @@ const ChordAnalysisModal: React.FC<ChordAnalysisModalProps> = ({ isOpen, onClose
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000]">
+      <AdminModalLabel modalName="ChordAnalysisModal" />
       <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-8 max-w-4xl w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
