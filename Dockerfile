@@ -23,12 +23,15 @@ ENV LLVM_CONFIG=/usr/bin/llvm-config-11
 
 WORKDIR /app
 
-# Copy package files and source code first
+# Copy package files first
 COPY package.json package-lock.json* ./
-COPY . .
 
 # Install ALL Node dependencies (including devDependencies for build)
 RUN npm install
+
+# Copy type declarations and source code
+COPY lamejs.d.ts soundtouchjs.d.ts* ./
+COPY . .
 
 # Build Next.js
 RUN npm run build
