@@ -959,7 +959,7 @@ async def extract_youtube_audio(request: Request):
         temp_dir = tempfile.mkdtemp()
         output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
         
-        # Opciones de yt-dlp
+        # Opciones de yt-dlp con bypass anti-bot
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -971,6 +971,15 @@ async def extract_youtube_audio(request: Request):
             'quiet': False,
             'no_warnings': False,
             'noplaylist': True,  # Solo descargar el video, NO la playlist
+            # Bypass anti-bot de YouTube
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['hls', 'dash']
+                }
+            },
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'nocheckcertificate': True,
         }
         
         # Extraer audio
