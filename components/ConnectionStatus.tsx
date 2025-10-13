@@ -13,21 +13,20 @@ export default function ConnectionStatus() {
   useEffect(() => {
     const checkB2Status = async () => {
       try {
-        // Verificar si el proxy server responde
-        const backendUrl = getBackendUrl();
-        const response = await fetch(`${backendUrl}/api/health`)
+        // En Railway, usar el proxy de Next.js para verificar el backend
+        const response = await fetch('/api/health')
         const data = await response.json()
         
-        if (data.status === 'OK') {
+        if (data.status === 'ok') {
           setB2Status('connected')
           setB2Error(null)
         } else {
           setB2Status('disconnected')
-          setB2Error('B2 proxy server not responding')
+          setB2Error('Backend not responding')
         }
       } catch (error) {
         setB2Status('disconnected')
-        setB2Error('B2 proxy server not running')
+        setB2Error('Backend not running')
       }
     }
 

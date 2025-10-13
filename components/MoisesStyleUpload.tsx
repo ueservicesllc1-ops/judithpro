@@ -228,8 +228,8 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
 
   const poll = async () => {
     try {
-      const backendUrl = getBackendUrl();
-      const statusResponse = await fetch(`${backendUrl}/status/${taskId}`);
+      // Usar el proxy de Next.js en vez de ir directo al backend
+      const statusResponse = await fetch(`/api/status/${taskId}`);
         const statusResult = await statusResponse.json();
 
         // Usar el progreso del backend
