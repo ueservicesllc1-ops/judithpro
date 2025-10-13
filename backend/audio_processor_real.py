@@ -78,21 +78,18 @@ class AudioProcessor:
                 
                 # Si se solicitaron tracks específicos, solo procesar esos
                 if requested_tracks:
-                    print(f"Creating only requested tracks: {requested_tracks}")
+                    print(f"🎯 Creating only requested tracks: {requested_tracks}")
                     
                     # Para vocals-instrumental, combinar drums + bass + other
                     if "vocals" in requested_tracks and "instrumental" in requested_tracks:
+                        print(f"🎤 Modo: Vocals + Instrumental")
                         # Vocals
                         vocals_path = model_dir / "vocals.wav"
                         if vocals_path.exists():
                             stems["vocals"] = str(vocals_path)
-                            print(f"Found vocals: {vocals_path}")
+                            print(f"✅ Found vocals: {vocals_path}")
                         
                         # Instrumental = drums + bass + other
-                        import librosa
-                        import soundfile as sf
-                        import numpy as np
-                        
                         instrumental_tracks = []
                         for track in ["drums", "bass", "other"]:
                             track_path = model_dir / f"{track}.wav"
@@ -105,7 +102,7 @@ class AudioProcessor:
                             sr = None
                             
                             for track_path in instrumental_tracks:
-                                audio, sample_rate = librosa.load(track_path, sr=None)
+                                audio, sample_rate = librosa.load(str(track_path), sr=None)
                                 sr = sample_rate
                                 
                                 if combined_audio is None:
@@ -119,16 +116,21 @@ class AudioProcessor:
                             instrumental_path = model_dir.parent / "instrumental.wav"
                             sf.write(str(instrumental_path), combined_audio, sr)
                             stems["instrumental"] = str(instrumental_path)
-                            print(f"Created instrumental: {instrumental_path}")
+                            print(f"✅ Created instrumental: {instrumental_path}")
                     
                     else:
-                        # Procesar tracks individuales solicitados
+                        # 🔥 FIX: Procesar tracks individuales solicitados
+                        print(f"🎵 Modo: Tracks individuales ({len(requested_tracks)} tracks)")
                         for stem_file, stem_name in stem_mapping.items():
                             if stem_name in requested_tracks:
                                 stem_path = model_dir / stem_file
                                 if stem_path.exists():
                                     stems[stem_name] = str(stem_path)
-                                    print(f"Found {stem_name}: {stem_path}")
+                                    print(f"✅ Found {stem_name}: {stem_path}")
+                                else:
+                                    print(f"⚠️ Track {stem_name} no encontrado en: {stem_path}")
+                        
+                        print(f"✅ Total stems procesados: {len(stems)}")
                 
                 else:
                     # Si no se especificaron tracks, devolver todos

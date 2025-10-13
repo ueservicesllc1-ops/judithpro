@@ -5,10 +5,11 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     
     // En producción (Railway), el backend está en el mismo contenedor
-    // Usar 127.0.0.1 en vez de localhost para forzar IPv4
-    const backendUrl = 'http://127.0.0.1:8000'
+    // En local, usar localhost
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT
+    const backendUrl = isProduction ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:8000'
     
-    console.log('🔗 Forwarding to backend:', `${backendUrl}/separate`)
+    console.log('🔗 Forwarding to backend:', `${backendUrl}/separate`, { isProduction })
     
     // Forward the request to the Python backend
     const response = await fetch(`${backendUrl}/separate`, {

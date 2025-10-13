@@ -7,11 +7,12 @@
  * - Flujo simplificado
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { saveSong } from '../lib/firestore';
 import { getBackendUrl } from '../lib/config';
 import AdminModalLabel from './AdminModalLabel';
+import SuccessWavePopup from './SuccessWavePopup';
 
 interface MoisesStyleUploadProps {
   onUploadComplete?: (songData: any) => void;
@@ -34,6 +35,13 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(preloadedFile || null);
   const [showNoFilePopup, setShowNoFilePopup] = useState(false);
+  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [pythonServerOnline, setPythonServerOnline] = useState(false);
+  const [demucsWorking, setDemucsWorking] = useState(false);
+  const [b2ProxyOnline, setB2ProxyOnline] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [completedTrackCount, setCompletedTrackCount] = useState(2);
   const [separationOptions, setSeparationOptions] = useState<SeparationOptions>({
     separationType: 'vocals-instrumental',
     vocals: false,
@@ -51,6 +59,94 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
       console.log('📁 Archivo precargado desde YouTube:', preloadedFile.name);
     }
   }, [preloadedFile]);
+
+  // Timer para contador de tiempo transcurrido
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isUploading && uploadStartTime) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - uploadStartTime) / 1000);
+        setElapsedTime(elapsed);
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isUploading, uploadStartTime]);
+
+  // Formatear tiempo transcurrido
+  const formatElapsedTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Verificar estado del servidor Python cada 3 segundos
+  useEffect(() => {
+    const checkPythonServer = async () => {
+      try {
+        // Usar el endpoint de Next.js que hace proxy al backend
+        const response = await fetch('/api/health', {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000)
+        });
+        setPythonServerOnline(response.ok);
+      } catch (error) {
+        setPythonServerOnline(false);
+      }
+    };
+
+    // Verificar inmediatamente
+    checkPythonServer();
+    
+    // Verificar cada 3 segundos
+    const interval = setInterval(checkPythonServer, 3000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Verificar estado del proxy B2 cada 3 segundos
+  useEffect(() => {
+    const checkB2Proxy = async () => {
+      try {
+        // En producción Railway, el B2 proxy podría no existir separado
+        // Solo verificar en local
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+          const response = await fetch('http://localhost:3001/api/health', {
+            method: 'GET',
+            signal: AbortSignal.timeout(2000)
+          });
+          setB2ProxyOnline(response.ok);
+        } else {
+          // En producción, asumir que está online si el backend está online
+          setB2ProxyOnline(pythonServerOnline);
+        }
+      } catch (error) {
+        setB2ProxyOnline(false);
+      }
+    };
+
+    // Verificar inmediatamente
+    checkB2Proxy();
+    
+    // Verificar cada 3 segundos
+    const interval = setInterval(checkB2Proxy, 3000);
+    
+    return () => clearInterval(interval);
+  }, [pythonServerOnline]);
+
+  // Detectar si Demucs está trabajando (cuando está procesando)
+  useEffect(() => {
+    if (isUploading && uploadProgress >= 20 && uploadProgress < 95) {
+      setDemucsWorking(true);
+    } else {
+      setDemucsWorking(false);
+    }
+  }, [isUploading, uploadProgress]);
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -105,12 +201,20 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
       fileType: uploadedFile.type,
       userId: user.uid,
       separationType: getSeparationType(separationOptions),
-      hiFi: separationOptions.hiFiMode
+      hiFi: separationOptions.hiFiMode,
+      tracksSeleccionados: {
+        vocals: separationOptions.vocals,
+        drums: separationOptions.drums,
+        bass: separationOptions.bass,
+        other: separationOptions.other
+      }
     });
 
     setIsUploading(true);
     setUploadProgress(0);
     setUploadMessage('Iniciando subida estilo Moises...');
+    setUploadStartTime(Date.now());
+    setElapsedTime(0);
 
     try {
       // Crear FormData
@@ -119,11 +223,29 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
       formData.append('separation_type', getSeparationType(separationOptions));
       formData.append('hi_fi', separationOptions.hiFiMode.toString());
       formData.append('user_id', user.uid);
+      
+      // 🔥 FIX: Enviar tracks seleccionados cuando es custom
+      if (separationOptions.separationType === 'custom') {
+        const selectedTracks = {
+          vocals: separationOptions.vocals,
+          drums: separationOptions.drums,
+          bass: separationOptions.bass,
+          other: separationOptions.other
+        };
+        formData.append('separation_options', JSON.stringify(selectedTracks));
+        console.log('🎯 Enviando tracks custom:', selectedTracks);
+      }
 
       console.log('📤 FormData creado:', {
         separationType: getSeparationType(separationOptions),
         hiFi: separationOptions.hiFiMode.toString(),
-        userId: user.uid
+        userId: user.uid,
+        separationOptions: separationOptions.separationType === 'custom' ? {
+          vocals: separationOptions.vocals,
+          drums: separationOptions.drums,
+          bass: separationOptions.bass,
+          other: separationOptions.other
+        } : 'N/A'
       });
 
       setUploadProgress(20);
@@ -239,8 +361,11 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
         
         setUploadMessage(`Procesando con IA... ${backendProgress}% (${attempts + 1}/300)`);
 
+        console.log('[POLLING] Status result:', statusResult);
+
         if (statusResult.status === 'completed') {
-          setUploadMessage('💾 Guardando metadata en base de datos...');
+          console.log('[COMPLETED] Processing completed! Saving to Firestore...');
+          setUploadMessage('Guardando metadata en base de datos...');
           setUploadProgress(95);
 
           // Calcular duración del audio
@@ -256,6 +381,8 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
           let calculatedKey = statusResult.key || 'E';
           let calculatedTimeSignature = statusResult.timeSignature || '4/4';
 
+          console.log('[FIRESTORE] Preparing song data...');
+          
           // Guardar en Firestore
           const songData = {
             title: file.name.replace(/\.[^/.]+$/, ""), // Sin extensión
@@ -283,11 +410,18 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
             separationTaskId: taskId
           };
 
+          console.log('[FIRESTORE] About to save song...');
           const firestoreSongId = await saveSong(songData);
-          console.log('✅ Guardado en Firestore:', firestoreSongId);
+          console.log('[FIRESTORE] Song saved successfully! ID:', firestoreSongId);
 
           setUploadProgress(100);
-          setUploadMessage('🎉 ¡Separación completada exitosamente!');
+          setUploadMessage('¡Separación completada exitosamente!');
+
+          console.log('[COMPLETE] Setting progress to 100%');
+
+          // Determinar número de tracks
+          const trackCount = Object.keys(statusResult.stems || {}).length || 2;
+          setCompletedTrackCount(trackCount);
 
           // Notificar al componente padre
           if (onUploadComplete) {
@@ -295,17 +429,25 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
               ...songData,
               id: firestoreSongId
             };
-            console.log('🎵 MoisesStyleUpload - Llamando onUploadComplete con:', completeData);
+            console.log('[CALLBACK] Calling onUploadComplete with:', completeData);
             onUploadComplete(completeData);
+          } else {
+            console.log('[WARNING] No onUploadComplete callback provided');
           }
 
-          // Reset después de un momento
+          console.log('[COMPLETE] Scheduling cleanup...');
+          
+          // Mostrar popup de éxito
+          setShowSuccessPopup(true);
+          
+          // Reset después de mostrar el popup
           setTimeout(() => {
+            console.log('[CLEANUP] Resetting upload state');
             setIsUploading(false);
             setUploadProgress(0);
             setUploadMessage('');
             setUploadedFile(null);
-          }, 2000);
+          }, 1000);
 
         } else if (statusResult.status === 'failed') {
           throw new Error(`Separación falló: ${statusResult.error || 'Error desconocido'}`);
@@ -331,28 +473,62 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-gray-900 shadow-lg">
+    <div className="max-w-lg mx-auto p-4 bg-gray-900 shadow-lg">
       <AdminModalLabel modalName="MoisesStyleUpload" />
-      <div className="space-y-6">
+      
+      {/* Status Indicators */}
+      <div className="flex items-center justify-start space-x-2 mb-3">
+        {/* Python Server Status */}
+        <div className="flex items-center space-x-1.5 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700">
+          <span className={`text-xs font-bold ${pythonServerOnline ? 'text-blue-400' : 'text-gray-500'}`}>P</span>
+          <div className={`w-2 h-2 rounded-full transition-all ${
+            pythonServerOnline 
+              ? 'bg-blue-500 shadow-lg shadow-blue-500/50 animate-pulse' 
+              : 'bg-gray-600'
+          }`}></div>
+        </div>
+
+        {/* B2 Proxy Status */}
+        <div className="flex items-center space-x-1.5 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700">
+          <span className={`text-xs font-bold ${b2ProxyOnline ? 'text-cyan-400' : 'text-gray-500'}`}>B2</span>
+          <div className={`w-2 h-2 rounded-full transition-all ${
+            b2ProxyOnline 
+              ? 'bg-cyan-500 shadow-lg shadow-cyan-500/50 animate-pulse' 
+              : 'bg-gray-600'
+          }`}></div>
+        </div>
+
+        {/* Demucs Working Status */}
+        <div className="flex items-center space-x-1.5 bg-gray-800 px-2 py-1 rounded-lg border border-gray-700">
+          <span className={`text-xs font-bold ${demucsWorking ? 'text-green-400' : 'text-gray-500'}`}>D</span>
+          <div className={`w-2 h-2 rounded-full transition-all ${
+            demucsWorking 
+              ? 'bg-green-500 shadow-lg shadow-green-500/50 animate-pulse' 
+              : 'bg-gray-600'
+          }`}></div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
 
         {/* File Upload */}
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
+          <label className="block text-xs font-medium text-white mb-2">
             Seleccionar Archivo de Audio
           </label>
           <input
             type="file"
             accept="audio/*"
             onChange={handleFileSelect}
-            className="w-full p-3 border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full p-2 text-sm border border-gray-600 bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={isUploading}
           />
           {uploadedFile && (
-            <div className="mt-2 p-3 bg-green-900 border border-green-700">
-              <p className="text-green-300">
+            <div className="mt-2 p-2 bg-green-900 border border-green-700">
+              <p className="text-green-300 text-xs">
                 <strong>Archivo:</strong> {uploadedFile.name}
               </p>
-              <p className="text-green-400 text-sm">
+              <p className="text-green-400 text-xs">
                 <strong>Tamaño:</strong> {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
@@ -361,10 +537,10 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
 
         {/* Separation Options */}
         <div>
-          <label className="block text-sm font-medium text-white mb-3">
+          <label className="block text-xs font-medium text-white mb-2">
             Opciones de Separación
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {/* Botón Rápido Voz + Pista */}
             <button
               onClick={() => {
@@ -392,7 +568,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
                 }
               }}
               disabled={isUploading}
-              className={`col-span-2 w-full p-4 border transition-all duration-300 font-medium relative shadow-lg overflow-hidden bg-black ${
+              className={`col-span-2 w-full p-3 text-sm border transition-all duration-300 font-medium relative shadow-lg overflow-hidden bg-black ${
                 isUploading
                   ? 'border-white/20 bg-gradient-to-b from-white/10 via-white/5 to-transparent text-gray-500 cursor-not-allowed'
                   : separationOptions.separationType === 'vocals-instrumental'
@@ -418,7 +594,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
                key={key}
                onClick={() => handleOptionChange(key as keyof SeparationOptions)}
                 disabled={isUploading}
-               className={`p-3 border transition-all duration-300 text-left relative shadow-lg overflow-hidden bg-black ${
+               className={`p-2 text-sm border transition-all duration-300 text-left relative shadow-lg overflow-hidden bg-black ${
                  separationOptions[key as keyof SeparationOptions]
                    ? 'border-blue-400/50 bg-gradient-to-b from-blue-500/20 via-blue-400/10 to-transparent text-white hover:from-blue-500/25 hover:via-blue-400/15'
                    : 'border-white/20 bg-gradient-to-b from-white/10 via-white/5 to-transparent text-white hover:from-white/15 hover:via-white/8'
@@ -430,8 +606,8 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
                    : 'bg-gray-500'
                }`}></div>
                <div>
-                 <div className="font-medium">{label}</div>
-                 <div className="text-sm opacity-75">{description}</div>
+                 <div className="font-medium text-sm">{label}</div>
+                 <div className="text-xs opacity-75">{description}</div>
                </div>
              </button>
             ))}
@@ -443,7 +619,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
            <button
              onClick={() => handleOptionChange('hiFiMode')}
                 disabled={isUploading}
-             className={`w-full p-3 border transition-all duration-300 text-left relative shadow-lg overflow-hidden bg-black ${
+             className={`w-full p-2 text-sm border transition-all duration-300 text-left relative shadow-lg overflow-hidden bg-black ${
                separationOptions.hiFiMode
                  ? 'border-white/30 bg-gradient-to-b from-white/20 via-white/10 to-transparent text-white hover:from-white/25 hover:via-white/15'
                  : 'border-white/20 bg-gradient-to-b from-white/10 via-white/5 to-transparent text-white hover:from-white/15 hover:via-white/8'
@@ -453,8 +629,8 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
                separationOptions.hiFiMode ? 'bg-blue-500 animate-pulse' : 'bg-gray-500'
              }`}></div>
              <div>
-               <div className="font-medium">🎚️ Modo Hi-Fi</div>
-               <div className="text-sm opacity-75">Calidad superior (procesamiento más lento)</div>
+               <div className="font-medium text-sm">🎚️ Modo Hi-Fi</div>
+               <div className="text-xs opacity-75">Calidad superior (procesamiento más lento)</div>
              </div>
            </button>
         </div>
@@ -462,9 +638,9 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
 
         {/* Upload Button / Progress Bar */}
         {isUploading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Barra de progreso mejorada */}
-            <div className="w-full bg-gray-800 h-8 relative overflow-hidden rounded-lg border border-gray-600">
+            <div className="w-full bg-gray-800 h-6 relative overflow-hidden rounded-lg border border-gray-600">
               <div 
                 className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ease-out flex items-center justify-center animate-pulse"
                 style={{ width: `${Math.max(uploadProgress, 20)}%` }}
@@ -484,10 +660,16 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
                 <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
                 <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
               </div>
-              <p className="text-white font-medium text-lg animate-pulse">
+              <p className="text-white font-medium text-base animate-pulse">
                 {uploadMessage || 'Procesando...'}
               </p>
-              <p className="text-gray-400 text-sm">
+              
+              {/* Contador de tiempo */}
+              <div className="text-blue-400 text-xl font-bold">
+                ⏱️ {formatElapsedTime(elapsedTime)}
+              </div>
+              
+              <p className="text-gray-400 text-xs">
                 ⏱️ No te preocupes, esto puede tardar varios minutos
               </p>
               <p className="text-gray-500 text-xs">
@@ -499,7 +681,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
           <button
             onClick={handleUpload}
             disabled={isUploading}
-            className={`w-full py-3 px-6 font-medium text-white transition-all duration-300 shadow-lg overflow-hidden border bg-black ${
+            className={`w-full py-2 px-4 text-sm font-medium text-white transition-all duration-300 shadow-lg overflow-hidden border bg-black ${
               isUploading
                 ? 'bg-gradient-to-b from-white/10 via-white/5 to-transparent border-white/20 cursor-not-allowed'
                 : 'bg-gradient-to-b from-white/10 via-white/5 to-transparent border-white/20 hover:from-white/15 hover:via-white/8 focus:ring-4 focus:ring-white/20'
@@ -532,6 +714,13 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
           </div>
         </div>
       )}
+
+      {/* Success Wave Popup */}
+      <SuccessWavePopup 
+        isOpen={showSuccessPopup} 
+        onClose={() => setShowSuccessPopup(false)}
+        trackCount={completedTrackCount}
+      />
     </div>
   );
 };

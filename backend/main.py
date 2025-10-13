@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
@@ -122,51 +122,55 @@ async def upload_audio(
 async def separate_audio_direct(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    separation_type: str = "vocals-instrumental",
-    separation_options: Optional[str] = None,
-    hi_fi: bool = False,
-    song_id: Optional[str] = None,
-    user_id: Optional[str] = None
+    separation_type: str = Form("vocals-instrumental"),
+    separation_options: Optional[str] = Form(None),
+    hi_fi: bool = Form(False),
+    song_id: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None)
 ):
     """Separate audio directly from uploaded file"""
     
     try:
-        print(f"📥 Received separation request:")
+        print(f"[SEPARATE] Received separation request:")
         print(f"  - File: {file.filename}")
         print(f"  - Content-Type: {file.content_type}")
         print(f"  - Separation Type: {separation_type}")
         print(f"  - Hi-Fi: {hi_fi}")
         
         if not file.content_type or not file.content_type.startswith("audio/"):
-            print(f"❌ Invalid content type: {file.content_type}")
+            print(f"[ERROR] Invalid content type: {file.content_type}")
             raise HTTPException(status_code=400, detail="File must be audio")
         
         # Generate unique task ID
         task_id = str(uuid.uuid4())
-        print(f"✅ Generated task ID: {task_id}")
+        print(f"[OK] Generated task ID: {task_id}")
         
         # Create upload directory
         upload_dir = Path(f"uploads/{task_id}")
         upload_dir.mkdir(parents=True, exist_ok=True)
-        print(f"✅ Created upload directory: {upload_dir}")
+        print(f"[OK] Created upload directory: {upload_dir}")
         
         # Save uploaded file directly
         file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'mp3'
         file_path = upload_dir / f"original.{file_ext}"
         
-        print(f"💾 Saving file to: {file_path}")
+        print(f"[SAVE] Saving file to: {file_path}")
         with open(file_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
-        print(f"✅ File saved successfully ({len(content)} bytes)")
+        print(f"[OK] File saved successfully ({len(content)} bytes)")
         
         # Parse separation options if provided
         custom_tracks = None
         if separation_options:
             try:
                 custom_tracks = json.loads(separation_options)
-            except:
+                print(f"🎯 [SEPARATE] Parsed separation_options: {custom_tracks}")
+            except Exception as e:
+                print(f"⚠️ [SEPARATE] Error parsing separation_options: {e}")
                 pass
+        else:
+            print(f"⚠️ [SEPARATE] No separation_options provided")
         
         # Create processing task
         task = ProcessingTask(
@@ -179,11 +183,15 @@ async def separate_audio_direct(
         
         # Store task in memory
         tasks_storage[task_id] = task
-        print(f"✅ Task created and stored: {task_id}")
+        print(f"[OK] Task created and stored: {task_id}")
         
         # Start background processing with options
+        print(f"🚀 [SEPARATE] Starting background task with:")
+        print(f"   - separation_type: {separation_type}")
+        print(f"   - custom_tracks: {custom_tracks}")
+        print(f"   - hi_fi: {hi_fi}")
         background_tasks.add_task(process_audio, task, custom_tracks, hi_fi)
-        print(f"✅ Background processing started")
+        print(f"[OK] Background processing started")
         
         return {
             "success": True,
@@ -206,11 +214,14 @@ async def separate_audio_direct(
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Error in /separate endpoint: {str(e)}")
+        print(f"ERROR in /separate endpoint: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+        error_detail = f"Server error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
@@ -346,27 +357,41 @@ async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = No
         task.status = TaskStatus.PROCESSING
         task.progress = 10
         
-        # Process based on separation type
+        # Callback para actualizar progreso
+        def update_progress(progress: int, message: str = ""):
+            task.progress = progress
+            print(f"Progress: {progress}% - {message}")
+        
+        # Determinar qué tracks solicitar
+        requested_tracks = None
+        
+        # 🔥 FIX: Procesar tracks custom (individuales seleccionados)
         if task.separation_type == "custom" and custom_tracks:
-            # Custom track separation with REAL AI
-            stems = await audio_processor.separate_custom_tracks(
-                task.file_path,
-                custom_tracks,
-                hi_fi
-            )
-        else:
-            # Use REAL Demucs AI processing for best quality
-            def update_progress(progress: int, message: str = ""):
-                task.progress = progress
-                print(f"Progress: {progress}% - {message}")
+            print(f"🎯 Procesando tracks CUSTOM: {custom_tracks}")
+            # Filtrar solo los tracks que están en True
+            requested_tracks = [track for track, enabled in custom_tracks.items() if enabled]
+            print(f"🎯 Tracks a separar: {requested_tracks}")
             
-            # Determinar qué tracks solicitar basado en separation_type
-            requested_tracks = None
-            if task.separation_type == "vocals-instrumental":
-                requested_tracks = ["vocals", "instrumental"]
-            elif task.separation_type == "vocals-drums-bass-other":
+            if len(requested_tracks) == 0:
+                # Si no hay tracks seleccionados, usar todos por defecto
                 requested_tracks = ["vocals", "drums", "bass", "other"]
             
+            stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
+        
+        elif task.separation_type == "vocals-instrumental":
+            print(f"🎤 Procesando modo: vocals-instrumental")
+            requested_tracks = ["vocals", "instrumental"]
+            stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
+        
+        elif task.separation_type == "vocals-drums-bass-other":
+            print(f"🎵 Procesando modo: vocals-drums-bass-other (4 stems)")
+            requested_tracks = ["vocals", "drums", "bass", "other"]
+            stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
+        
+        else:
+            # Por defecto, separar todos los stems
+            print(f"🎵 Procesando modo por defecto: 4 stems")
+            requested_tracks = ["vocals", "drums", "bass", "other"]
             stems = await audio_processor.separate_with_demucs(task.file_path, update_progress, requested_tracks)
         
         # Upload stems to B2 for online playback
