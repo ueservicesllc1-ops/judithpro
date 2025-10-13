@@ -70,7 +70,7 @@ RUN pip install --no-cache-dir --timeout 600 --retries 3 \
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir --timeout 600 --retries 3 \
-    aiofiles==23.2.1 "httpx>=0.24.0" "pydantic>=2.0.0" \
+    aiofiles==23.2.1 "aiohttp>=3.8.0" "httpx>=0.24.0" "pydantic>=2.0.0" \
     "requests>=2.31.0" "yt-dlp>=2023.11.16" "python-dotenv>=1.0.0"
 
 # Production stage
