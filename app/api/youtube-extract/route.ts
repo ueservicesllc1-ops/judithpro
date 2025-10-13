@@ -13,8 +13,9 @@ export async function POST(request: NextRequest) {
 
     console.log('🎬 Extrayendo audio de YouTube:', url)
 
-    // En Railway, el backend está en el mismo contenedor (localhost:8000)
-    const backendUrl = 'http://localhost:8000'
+    // En Railway, el backend está en el mismo contenedor
+    // Usar 127.0.0.1 en vez de localhost para forzar IPv4
+    const backendUrl = 'http://127.0.0.1:8000'
     console.log('   Backend URL:', backendUrl)
     console.log('   Endpoint completo:', `${backendUrl}/youtube-extract`)
     

@@ -5,8 +5,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     
     // En producción (Railway), el backend está en el mismo contenedor
-    // Usar localhost:8000 directamente
-    const backendUrl = 'http://localhost:8000'
+    // Usar 127.0.0.1 en vez de localhost para forzar IPv4
+    const backendUrl = 'http://127.0.0.1:8000'
     
     console.log('🔗 Forwarding to backend:', `${backendUrl}/separate`)
     
