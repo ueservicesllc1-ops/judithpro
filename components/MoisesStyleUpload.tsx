@@ -314,7 +314,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
           console.log(`Polling attempt ${attempts}/${maxAttempts}, status: ${statusResult.status}, progress: ${backendProgress}%`);
           
           if (attempts < maxAttempts) {
-            setTimeout(poll, 3000); // Poll cada 3 segundos para reducir carga
+            setTimeout(poll, 5000); // Poll cada 5 segundos para reducir carga
           } else {
             throw new Error(`Separación tardó demasiado tiempo (${maxAttempts} intentos = ${maxAttempts * 3 / 60} minutos). Último estado: ${statusResult.status}, progreso: ${backendProgress}%`);
           }
