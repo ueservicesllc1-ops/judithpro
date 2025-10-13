@@ -1000,13 +1000,43 @@ async def extract_youtube_audio(request: Request):
             
             print(f"[YouTube API] Descargando MP3: {mp3_url}")
             
-            # Descargar el archivo
-            mp3_response = await client.get(mp3_url)
+            # Descargar el archivo con timeout largo y reintentos
+            max_retries = 3
+            audio_data = None
             
-            if mp3_response.status_code != 200:
-                raise HTTPException(status_code=500, detail="Error al descargar el audio")
+            for attempt in range(max_retries):
+                try:
+                    print(f"[YouTube API] Intento {attempt + 1}/{max_retries}")
+                    
+                    # Timeout de 120 segundos para archivos grandes
+                    download_client = httpx.AsyncClient(timeout=120.0, follow_redirects=True)
+                    mp3_response = await download_client.get(
+                        mp3_url,
+                        headers={
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Accept': '*/*',
+                            'Referer': 'https://youtube-mp36.p.rapidapi.com/'
+                        }
+                    )
+                    await download_client.aclose()
+                    
+                    print(f"[YouTube API] Status code: {mp3_response.status_code}")
+                    
+                    if mp3_response.status_code == 200:
+                        audio_data = mp3_response.content
+                        print(f"[YouTube API] Descarga exitosa: {len(audio_data)} bytes")
+                        break
+                    else:
+                        print(f"[YouTube API] Error en descarga: {mp3_response.status_code} - {mp3_response.text[:200]}")
+                        
+                except Exception as e:
+                    print(f"[YouTube API] Error en intento {attempt + 1}: {e}")
+                    if attempt == max_retries - 1:
+                        raise
+                    await asyncio.sleep(2)  # Esperar 2 segundos antes de reintentar
             
-            audio_data = mp3_response.content
+            if not audio_data:
+                raise HTTPException(status_code=500, detail="No se pudo descargar el audio después de varios intentos")
             
             print(f"[YouTube API] Audio descargado: {video_title} ({len(audio_data)} bytes)")
             
