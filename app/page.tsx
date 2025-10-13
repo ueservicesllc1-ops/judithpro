@@ -1559,7 +1559,6 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-medium text-white mb-2">No songs yet</h3>
               <p className="text-white mb-6">Upload your first audio file to get started with track separation</p>
-              <div className="space-y-3">
               <button 
                 onClick={() => setShowMoisesStyleModal(true)}
                 className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 flex items-center space-x-2 mx-auto"
@@ -1567,35 +1566,6 @@ export default function Home() {
                 <Plus className="w-4 h-4" />
                 <span>Upload Audio</span>
               </button>
-                
-                <button 
-                  onClick={() => {
-                    // Crear canción de prueba
-                    const testSong = {
-                      id: 'test-' + Date.now(),
-                      title: 'Canción de Prueba',
-                      artist: 'Artista Test',
-                      genre: 'Test',
-                      bpm: 120,
-                      key: 'C',
-                      duration: '3:45',
-                      thumbnail: '♪',
-                      fileUrl: 'http://example.com/test.mp3',
-                      uploadedAt: new Date().toISOString(),
-                      userId: user?.uid || 'test',
-                      fileSize: 1000000,
-                      fileName: 'test.mp3',
-                      status: 'completed' as const
-                    };
-                    setSongs([testSong]);
-                    console.log('Canción de prueba agregada');
-                  }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 flex items-center space-x-2 mx-auto"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Agregar Canción de Prueba</span>
-                </button>
-              </div>
             </div>
           ) : (
             <div className="bg-gray-900 overflow-hidden">

@@ -130,67 +130,87 @@ async def separate_audio_direct(
 ):
     """Separate audio directly from uploaded file"""
     
-    if not file.content_type.startswith("audio/"):
-        raise HTTPException(status_code=400, detail="File must be audio")
-    
-    # Generate unique task ID
-    task_id = str(uuid.uuid4())
-    
-    # Create upload directory
-    upload_dir = Path(f"../uploads/{task_id}")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Save uploaded file directly
-    file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'mp3'
-    file_path = upload_dir / f"original.{file_ext}"
-    
-    with open(file_path, "wb") as buffer:
-        content = await file.read()
-        buffer.write(content)
-    
-    # Parse separation options if provided
-    custom_tracks = None
-    if separation_options:
-        try:
-            custom_tracks = json.loads(separation_options)
-        except:
-            pass
-    
-    # Create processing task
-    task = ProcessingTask(
-        id=task_id,
-        original_filename=file.filename,
-        file_path=str(file_path),
-        separation_type=separation_type,
-        status=TaskStatus.PROCESSING
-    )
-    
-    # Store task in memory
-    tasks_storage[task_id] = task
-    
-    # Start background processing with options
-    background_tasks.add_task(process_audio, task, custom_tracks, hi_fi)
-    
-    return {
-        "success": True,
-        "data": {
-            "task_id": task_id,
-            "status": "processing",
-            "message": "Audio separation started",
-            "filename": file.filename,
-            "original_url": f"http://localhost:8000/audio/{task_id}/original.mp3",
-            "stems": {
-                "vocals": f"http://localhost:8000/audio/{task_id}/vocals.wav",
-                "drums": f"http://localhost:8000/audio/{task_id}/drums.wav",
-                "bass": f"http://localhost:8000/audio/{task_id}/bass.wav",
-                "other": f"http://localhost:8000/audio/{task_id}/other.wav"
-            },
-            "bpm": 126,
-            "key": "E",
-            "timeSignature": "4/4",
-            "duration": "5:00"
+    try:
+        print(f"📥 Received separation request:")
+        print(f"  - File: {file.filename}")
+        print(f"  - Content-Type: {file.content_type}")
+        print(f"  - Separation Type: {separation_type}")
+        print(f"  - Hi-Fi: {hi_fi}")
+        
+        if not file.content_type or not file.content_type.startswith("audio/"):
+            print(f"❌ Invalid content type: {file.content_type}")
+            raise HTTPException(status_code=400, detail="File must be audio")
+        
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+        print(f"✅ Generated task ID: {task_id}")
+        
+        # Create upload directory
+        upload_dir = Path(f"uploads/{task_id}")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        print(f"✅ Created upload directory: {upload_dir}")
+        
+        # Save uploaded file directly
+        file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'mp3'
+        file_path = upload_dir / f"original.{file_ext}"
+        
+        print(f"💾 Saving file to: {file_path}")
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        print(f"✅ File saved successfully ({len(content)} bytes)")
+        
+        # Parse separation options if provided
+        custom_tracks = None
+        if separation_options:
+            try:
+                custom_tracks = json.loads(separation_options)
+            except:
+                pass
+        
+        # Create processing task
+        task = ProcessingTask(
+            id=task_id,
+            original_filename=file.filename,
+            file_path=str(file_path),
+            separation_type=separation_type,
+            status=TaskStatus.PROCESSING
+        )
+        
+        # Store task in memory
+        tasks_storage[task_id] = task
+        print(f"✅ Task created and stored: {task_id}")
+        
+        # Start background processing with options
+        background_tasks.add_task(process_audio, task, custom_tracks, hi_fi)
+        print(f"✅ Background processing started")
+        
+        return {
+            "success": True,
+            "data": {
+                "task_id": task_id,
+                "status": "processing",
+                "message": "Audio separation started",
+                "filename": file.filename,
+                "original_url": f"http://localhost:8000/audio/{task_id}/original.mp3",
+                "stems": {
+                    "vocals": f"http://localhost:8000/audio/{task_id}/vocals.wav",
+                    "drums": f"http://localhost:8000/audio/{task_id}/drums.wav",
+                    "bass": f"http://localhost:8000/audio/{task_id}/bass.wav",
+                    "other": f"http://localhost:8000/audio/{task_id}/other.wav"
+                },
+                "bpm": 126,
+                "key": "E",
+                "timeSignature": "4/4",
+                "duration": "5:00"
+            }
         }
-    }
+        
+    except Exception as e:
+        print(f"❌ Error in /separate endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
