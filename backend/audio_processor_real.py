@@ -41,20 +41,45 @@ class AudioProcessor:
             if task_callback:
                 task_callback(40, "Processing with Demucs AI...")
             
-            # Execute in subprocess
+            # Execute in subprocess con output en tiempo real
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.STDOUT  # Combinar stderr con stdout
             )
             
-            stdout, stderr = await process.communicate()
+            # Leer output en tiempo real
+            output_lines = []
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                line_text = line.decode().strip()
+                output_lines.append(line_text)
+                print(f"[Demucs] {line_text}")
+                
+                # Actualizar progreso basado en output de Demucs
+                if task_callback and "%" in line_text:
+                    # Demucs muestra progreso como "50%"
+                    try:
+                        import re
+                        match = re.search(r'(\d+)%', line_text)
+                        if match:
+                            demucs_progress = int(match.group(1))
+                            # Mapear progreso de Demucs (0-100) a nuestro rango (40-70)
+                            our_progress = 40 + (demucs_progress * 0.3)
+                            task_callback(int(our_progress), f"Demucs: {demucs_progress}%")
+                    except:
+                        pass
+            
+            await process.wait()
             
             if process.returncode != 0:
-                print(f"Demucs error: {stderr.decode()}")
-                raise Exception(f"Demucs error: {stderr.decode()}")
+                error_output = '\n'.join(output_lines[-20:])  # Últimas 20 líneas
+                print(f"Demucs error: {error_output}")
+                raise Exception(f"Demucs error: {error_output}")
             
-            print(f"Demucs output: {stdout.decode()}")
+            print(f"Demucs completed successfully")
             
             # Update progress: Demucs completed
             if task_callback:
