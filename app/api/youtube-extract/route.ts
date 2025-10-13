@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🎬 Extrayendo audio de YouTube:', url)
 
-    // Llamar al backend de Python para extraer el audio
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    // En Railway, el backend está en el mismo contenedor (localhost:8000)
+    const backendUrl = 'http://localhost:8000'
     console.log('   Backend URL:', backendUrl)
     console.log('   Endpoint completo:', `${backendUrl}/youtube-extract`)
     

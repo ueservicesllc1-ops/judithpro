@@ -4,8 +4,11 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     
-    // Get the backend URL
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    // En producción (Railway), el backend está en el mismo contenedor
+    // Usar localhost:8000 directamente
+    const backendUrl = 'http://localhost:8000'
+    
+    console.log('🔗 Forwarding to backend:', `${backendUrl}/separate`)
     
     // Forward the request to the Python backend
     const response = await fetch(`${backendUrl}/separate`, {
