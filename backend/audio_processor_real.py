@@ -41,65 +41,20 @@ class AudioProcessor:
             if task_callback:
                 task_callback(40, "Processing with Demucs AI...")
             
-            # Execute in subprocess with real-time progress
+            # Execute in subprocess
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             
-            # Read stdout in real-time to track progress
-            current_progress = 40
-            stdout_lines = []
-            stderr_lines = []
-            
-            async def read_stream(stream, is_stderr=False):
-                nonlocal current_progress
-                while True:
-                    line = await stream.readline()
-                    if not line:
-                        break
-                    
-                    line_str = line.decode().strip()
-                    
-                    if is_stderr:
-                        stderr_lines.append(line_str)
-                    else:
-                        stdout_lines.append(line_str)
-                    
-                    # Parse Demucs progress from output
-                    # Demucs prints progress like: "0%" "10%" "20%" etc.
-                    if '%' in line_str and not is_stderr:
-                        try:
-                            # Extract percentage from line
-                            for part in line_str.split():
-                                if '%' in part:
-                                    percent_str = part.replace('%', '').strip()
-                                    demucs_progress = int(percent_str)
-                                    # Map Demucs 0-100% to our 40-70% range
-                                    current_progress = 40 + int(demucs_progress * 0.3)
-                                    if task_callback:
-                                        task_callback(current_progress, f"Processing: {demucs_progress}%")
-                                    print(f"Demucs progress: {demucs_progress}% -> Task progress: {current_progress}%")
-                                    break
-                        except (ValueError, IndexError):
-                            pass
-            
-            # Read both streams concurrently
-            await asyncio.gather(
-                read_stream(process.stdout, False),
-                read_stream(process.stderr, True)
-            )
-            
-            await process.wait()
+            stdout, stderr = await process.communicate()
             
             if process.returncode != 0:
-                stderr_output = '\n'.join(stderr_lines)
-                print(f"Demucs error: {stderr_output}")
-                raise Exception(f"Demucs error: {stderr_output}")
+                print(f"Demucs error: {stderr.decode()}")
+                raise Exception(f"Demucs error: {stderr.decode()}")
             
-            stdout_output = '\n'.join(stdout_lines)
-            print(f"Demucs output: {stdout_output}")
+            print(f"Demucs output: {stdout.decode()}")
             
             # Update progress: Demucs completed
             if task_callback:
