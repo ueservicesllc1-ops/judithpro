@@ -959,7 +959,7 @@ async def extract_youtube_audio(request: Request):
         temp_dir = tempfile.mkdtemp()
         output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
         
-        # Opciones de yt-dlp con bypass anti-bot
+        # Opciones de yt-dlp con bypass anti-bot mejorado
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -970,16 +970,24 @@ async def extract_youtube_audio(request: Request):
             'outtmpl': output_template,
             'quiet': False,
             'no_warnings': False,
-            'noplaylist': True,  # Solo descargar el video, NO la playlist
-            # Bypass anti-bot de YouTube
+            'noplaylist': True,
+            # Bypass agresivo anti-bot
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],
-                    'skip': ['hls', 'dash']
+                    'player_client': ['android_creator', 'android', 'ios', 'web'],
+                    'skip': ['hls', 'dash', 'translated_subs']
                 }
             },
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'user_agent': 'com.google.android.youtube/19.09.36 (Linux; U; Android 13) gzip',
+            'http_headers': {
+                'User-Agent': 'com.google.android.youtube/19.09.36 (Linux; U; Android 13) gzip',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            },
             'nocheckcertificate': True,
+            'geo_bypass': True,
+            'age_limit': None,
         }
         
         # Extraer audio
