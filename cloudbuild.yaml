@@ -1,11 +1,11 @@
 steps:
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/judith-repo/judith-app:$SHORT_SHA', '.']
   
-  # Push the image to Container Registry
+  # Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/judith-repo/judith-app:$SHORT_SHA']
   
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -14,15 +14,18 @@ steps:
       - 'run'
       - 'deploy'
       - 'judith-app'
-      - '--image=gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/judith-repo/judith-app:$SHORT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=3000'
       - '--memory=4Gi'
-      - '--cpu=2'
-      - '--max-instances=10'
       - '--timeout=900'
 
 images:
-  - 'gcr.io/$PROJECT_ID/judith-app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/judith-repo/judith-app:$SHORT_SHA'
+
+timeout: '3600s'
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
