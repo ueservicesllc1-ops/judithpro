@@ -90,7 +90,22 @@ class AudioProcessor:
             file_name = Path(file_path).stem
             
             # Demucs creates a folder with the model name
-            model_dir = output_dir / "htdemucs" / file_name
+            # Buscar en todas las subcarpetas posibles
+            possible_dirs = [
+                output_dir / "htdemucs" / file_name,
+                output_dir / "htdemucs" / "original",
+            ]
+            
+            model_dir = None
+            for dir_path in possible_dirs:
+                if dir_path.exists() and any(dir_path.glob("*.wav")):
+                    model_dir = dir_path
+                    print(f"✅ Found stems in: {model_dir}")
+                    break
+            
+            if not model_dir:
+                print(f"❌ No stems found in any expected directory")
+                raise Exception("Demucs completed but no output files found")
             
             if model_dir.exists():
                 # Map Demucs output to our expected format
