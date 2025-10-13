@@ -223,7 +223,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
   };
 
   const waitForSeparationCompletion = async (taskId: string, file: File, user: any) => {
-    const maxAttempts = 600; // 20 minutos máximo para Railway
+    const maxAttempts = 300; // 15 minutos máximo para Railway
     let attempts = 0;
 
   const poll = async () => {
