@@ -959,7 +959,7 @@ async def extract_youtube_audio(request: Request):
         temp_dir = tempfile.mkdtemp()
         output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
         
-        # Opciones de yt-dlp con bypass anti-bot mejorado
+        # Opciones de yt-dlp - intentar múltiples métodos
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -971,23 +971,21 @@ async def extract_youtube_audio(request: Request):
             'quiet': False,
             'no_warnings': False,
             'noplaylist': True,
-            # Bypass agresivo anti-bot
+            # Intentar con múltiples clientes
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android_creator', 'android', 'ios', 'web'],
-                    'skip': ['hls', 'dash', 'translated_subs']
+                    'player_client': ['android_embedded', 'android_music', 'android_creator', 'android'],
+                    'skip': ['hls', 'dash']
                 }
             },
-            'user_agent': 'com.google.android.youtube/19.09.36 (Linux; U; Android 13) gzip',
+            # Simular cliente Android Music (menos restrictivo)
+            'user_agent': 'com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 13; en_US)',
             'http_headers': {
-                'User-Agent': 'com.google.android.youtube/19.09.36 (Linux; U; Android 13) gzip',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Sec-Fetch-Mode': 'navigate',
+                'User-Agent': 'com.google.android.apps.youtube.music/6.42.52 (Linux; U; Android 13; en_US)',
             },
             'nocheckcertificate': True,
-            'geo_bypass': True,
-            'age_limit': None,
+            'extractor_retries': 3,
+            'fragment_retries': 3,
         }
         
         # Extraer audio
