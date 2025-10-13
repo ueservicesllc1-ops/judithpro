@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import WaveSurfer from 'wavesurfer.js';
 import EnhancedWaveSurfer from './EnhancedWaveSurfer';
+import AdminModalLabel from './AdminModalLabel';
 import './WaveSurferStyles.css';
 
 interface WaveSurferMixerProps {

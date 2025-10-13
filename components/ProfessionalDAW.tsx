@@ -5,6 +5,7 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import ProfessionalSlider from './ProfessionalSlider';
+import AdminModalLabel from './AdminModalLabel';
 
 interface TrackData {
   id: string;

@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { ArrowLeft, Music } from 'lucide-react';
+import AdminModalLabel from './AdminModalLabel';
 
 interface TestMixerProps {
   isOpen: boolean;

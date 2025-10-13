@@ -39,6 +39,7 @@ import BpmDetectorModal from '@/components/BpmDetectorModal'
 import ChordAnalysisModal from '@/components/ChordAnalysisModal'
 import YoutubeExtractModal from '@/components/YoutubeExtractModal'
 import HeroPopup from '@/components/HeroPopup'
+import AdminModalLabel from '@/components/AdminModalLabel'
 // import ChordAnalyzer from '@/components/ChordAnalyzer'
 import { getUserSongs, subscribeToUserSongs, deleteSong, Song } from '@/lib/firestore'
 // import useAudioCleanup from '@/hooks/useAudioCleanup'
@@ -88,6 +89,9 @@ export default function Home() {
   
   // Referencias para Pitch Shift
   const pitchShiftNodeRef = useRef<GainNode | null>(null)
+  
+  // Timestamp del último seek manual
+  const lastSeekTimeRef = useRef<number>(0)
   const [pitchSemitones, setPitchSemitones] = useState(0)
 
   
@@ -1097,6 +1101,9 @@ export default function Home() {
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const seekTime = Number(e.target.value);
     
+    // Marcar timestamp del seek manual
+    lastSeekTimeRef.current = Date.now();
+    
     Object.entries(audioElements).forEach(([trackKey, audio]) => {
       // Todos los tracks se mueven al mismo tiempo
       audio.currentTime = Math.max(0, seekTime);
@@ -1158,9 +1165,12 @@ export default function Home() {
       console.log(' Colores de tracks cargados desde Firestore:', song.trackColors);
     }
 
-    // Resetear estado de reproducción al cargar nueva canción
-    setIsPlaying(false);
-    setCurrentTime(0);
+    // Resetear SOLO si no hay audios cargados (primera vez)
+    if (Object.keys(audioElements).length === 0) {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      console.log(' Primera carga de canción - reseteando estado')
+    }
     setTrackOnsets({});
     
     // Limpiar audio anterior
@@ -1384,17 +1394,12 @@ export default function Home() {
       setWaveforms(newWaveforms)
       setTrackLoadingStates(newLoadingStates)
       
-      // Asegurar que todos los audios estén pausados al finalizar la carga
-      Object.values(newAudioElements).forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
-      });
-      setIsPlaying(false);
-      setCurrentTime(0);
+      // NO resetear el tiempo si ya había audios cargados
+      // Esto previene que se reinicie cuando se recarga por cambios de color u otras actualizaciones
+      console.log(' Carga completada - manteniendo estado de reproducción actual')
       
       console.log('All audio files loaded:', Object.keys(newAudioElements))
       console.log('All waveforms generated:', Object.keys(newWaveforms))
-      console.log(' Todos los audios pausados y reseteados al finalizar carga')
     } catch (error) {
       console.error('Error loading audio files:', error)
     } finally {
@@ -1409,6 +1414,12 @@ export default function Home() {
     }
 
     const updateTime = () => {
+      // NO actualizar si acabamos de hacer un seek manual (últimos 1500ms)
+      const timeSinceLastSeek = Date.now() - lastSeekTimeRef.current;
+      if (timeSinceLastSeek < 1500) {
+        return;
+      }
+      
       // Usar el primer elemento de audio como referencia para el tiempo
       const firstAudio = Object.values(audioElements)[0];
       if (firstAudio) {
@@ -1773,6 +1784,7 @@ export default function Home() {
       {/* Song Modal */}
       {showSongModal && selectedSong && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <AdminModalLabel modalName="SongModal (Main Mixer)" />
           <div className="bg-gray-800 w-[90vw] h-[90vh] mx-4 flex flex-col border border-white border-opacity-20">
             {/* Header - 10% de la pantalla */}
             <div className="bg-black h-[10vh] flex items-center justify-between px-6">
@@ -2214,6 +2226,9 @@ export default function Home() {
                                 const percentage = x / rect.width
                                 const newTime = percentage * duration
                                 
+                                // Marcar timestamp del seek manual
+                                lastSeekTimeRef.current = Date.now();
+                                
                                 // Actualizar tiempo en todos los tracks
                                 Object.values(audioElements).forEach(audio => {
                                   audio.currentTime = newTime
@@ -2278,12 +2293,7 @@ export default function Home() {
                   />
                 ) : (
                   <ChordAnalysis
-                    audioUrl={(() => {
-                      const url = selectedSong?.originalUrl || selectedSong?.fileUrl;
-                      console.log('Selected song:', selectedSong);
-                      console.log('Using URL for chord analysis:', url);
-                      return url;
-                    })()}
+                    audioUrl={selectedSong?.originalUrl || selectedSong?.fileUrl}
                     currentTime={currentTime}
                     duration={duration || 0}
                     isPlaying={isPlaying}
@@ -2302,8 +2312,6 @@ export default function Home() {
                       setShowEQInMixer(true);
                     }}
                     onEQChange={(bass, mid, treble) => {
-                      console.log('EQ Master:', { bass, mid, treble });
-                      
                       // Aplicar valores a los filtros de EQ
                       if (bassFilterRef.current) {
                         bassFilterRef.current.gain.value = bass;
