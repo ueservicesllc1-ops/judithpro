@@ -223,7 +223,7 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
   };
 
   const waitForSeparationCompletion = async (taskId: string, file: File, user: any) => {
-    const maxAttempts = 300; // 5 minutos máximo
+    const maxAttempts = 600; // 20 minutos máximo para Railway
     let attempts = 0;
 
   const poll = async () => {
@@ -314,9 +314,9 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
           console.log(`Polling attempt ${attempts}/${maxAttempts}, status: ${statusResult.status}, progress: ${backendProgress}%`);
           
           if (attempts < maxAttempts) {
-            setTimeout(poll, 2000); // Poll cada 2 segundos
+            setTimeout(poll, 3000); // Poll cada 3 segundos para reducir carga
           } else {
-            throw new Error(`Separación tardó demasiado tiempo (${maxAttempts} intentos). Último estado: ${statusResult.status}, progreso: ${backendProgress}%`);
+            throw new Error(`Separación tardó demasiado tiempo (${maxAttempts} intentos = ${maxAttempts * 3 / 60} minutos). Último estado: ${statusResult.status}, progreso: ${backendProgress}%`);
           }
         }
       } catch (error) {
