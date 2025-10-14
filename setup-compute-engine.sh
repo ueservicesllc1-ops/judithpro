@@ -30,8 +30,7 @@ sudo apt-get install -y \
     libffi-dev \
     libssl-dev \
     cmake \
-    llvm-11 \
-    llvm-11-dev \
+    llvm \
     gfortran \
     libopenblas-dev \
     liblapack-dev \
