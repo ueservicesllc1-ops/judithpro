@@ -63,12 +63,12 @@ export default function Home() {
   const [showChordAnalysisModal, setShowChordAnalysisModal] = useState(false)
   const [showYoutubeExtractModal, setShowYoutubeExtractModal] = useState(false)
   const [showEQInMixer, setShowEQInMixer] = useState(false)
-  const [youtubeAudioFile, setYoutubeAudioFile] = useState<File | null>(null)
   const [showHeroPopup, setShowHeroPopup] = useState(false)
   const [songs, setSongs] = useState<Song[]>([])
   const [songsLoading, setSongsLoading] = useState(true)
   const [showSongModal, setShowSongModal] = useState(false)
   const [selectedSong, setSelectedSong] = useState<Song | null>(null)
+  const [preloadedAudioFile, setPreloadedAudioFile] = useState<File | null>(null)
 
   const [songDelay, setSongDelay] = useState<number>(0)
   const [audioElements, setAudioElements] = useState<{ [key: string]: HTMLAudioElement }>({})
@@ -205,7 +205,7 @@ export default function Home() {
   // Funciones para cerrar modales y restaurar CoverFlow
   const closeMoisesModal = () => {
     setShowMoisesStyleModal(false)
-    setYoutubeAudioFile(null) // Limpiar archivo de YouTube
+    setPreloadedAudioFile(null)
     setShowCoverFlow(true)
     setActiveFeature(null)
   }
@@ -252,19 +252,12 @@ export default function Home() {
     setActiveFeature(null)
   }
 
-  // Handler para separar tracks desde YouTube
-  const handleYoutubeToSeparation = (audioFile: File) => {
-    console.log('🎵 Recibiendo archivo de YouTube para separación:', audioFile.name)
-    // Guardar el archivo y cerrar modal de YouTube
-    setYoutubeAudioFile(audioFile)
-    setShowYoutubeExtractModal(false)
-    // Abrir modal de separación
-    setShowMoisesStyleModal(true)
-  }
+  // Handler removed - audio separation feature no longer available
   
   const closeSongModal = () => {
     setShowSongModal(false)
     setSelectedSong(null)
+    setPreloadedAudioFile(null)
     setIsPlaying(false)
     setCurrentTime(0)
     // No restaurar CoverFlow aquí porque el song modal no viene del CoverFlow
@@ -1373,8 +1366,20 @@ export default function Home() {
             // 3. GUARDAR en cache persistente para próximas veces
             const newPersistentCache = { ...waveformCache, [trackUrl]: waveformData }
             setWaveformCache(newPersistentCache)
-            localStorage.setItem('waveform-cache', JSON.stringify(newPersistentCache))
-            console.log(` GUARDADO en cache para ${trackKey}`)
+            try {
+              localStorage.setItem('waveform-cache', JSON.stringify(newPersistentCache))
+              console.log(` GUARDADO en cache para ${trackKey}`)
+            } catch (e) {
+              // Si localStorage está lleno, limpiar cache viejo y reintentar
+              console.warn('Cache lleno, limpiando cache viejo...')
+              localStorage.removeItem('waveform-cache')
+              try {
+                localStorage.setItem('waveform-cache', JSON.stringify({ [trackUrl]: waveformData }))
+                console.log(` GUARDADO en cache (después de limpiar) para ${trackKey}`)
+              } catch (e2) {
+                console.error('No se pudo guardar en cache:', e2)
+              }
+            }
             
             newLoadingStates[trackKey] = 'ready'
             console.log(` Waveform generado para ${trackKey}: ${waveformData.length} puntos`)
@@ -1445,16 +1450,6 @@ export default function Home() {
     };
   }, [isPlaying, audioElements]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-white text-lg">Por favor, inicia sesión</p>
-        </div>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -1463,6 +1458,16 @@ export default function Home() {
             <span className="text-white font-bold text-2xl">J</span>
           </div>
           <p className="text-white text-lg">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white text-lg">Por favor, inicia sesión</p>
         </div>
       </div>
     )
@@ -1724,57 +1729,40 @@ export default function Home() {
       </div>
 
 
-      {/* Moises Style Modal */}
+      {/* Moises Style Upload Modal */}
       {showMoisesStyleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-black mx-auto flex flex-col border border-white border-opacity-20 relative max-w-5xl" style={{transform: 'scale(1.2)'}}>
-                 {/* Botón de cerrar */}
-                 <div className="absolute top-4 right-4 z-10">
-                   <button
-                     onClick={closeMoisesModal}
-                     className="text-white hover:text-gray-400 transition-colors bg-gray-800 hover:bg-gray-700 p-2"
-                   >
-                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                     </svg>
-                   </button>
-                 </div>
+            {/* Botón de cerrar */}
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={closeMoisesModal}
+                className="text-white hover:text-gray-400 transition-colors bg-gray-800 hover:bg-gray-700 p-2"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
             {/* Contenido del Modal */}
             <div className="overflow-y-auto p-5">
               <div className="mx-auto space-y-5">
-                {/* Upload Component */}
-                {/* <MoisesStyleUpload onUploadComplete={(songData) => {
-                  console.log(' Upload complete - Datos recibidos:', songData);
-                  console.log(' Stems disponibles:', songData.stems);
-                  console.log(' BPM detectado:', songData.bpm);
-                  
-                  // Cerrar el modal y restaurar CoverFlow
-                  closeMoisesModal();
-                  
-                  // Verificar que tenemos los datos necesarios
-                  if (songData.stems && (songData.stems.vocals || songData.stems.instrumental)) {
-                    console.log(' Separación completada, abriendo mixer automáticamente...');
-                    console.log(' Song ID:', songData.id);
-                    console.log(' Stems:', songData.stems);
+                <MoisesStyleUpload 
+                  preloadedFile={preloadedAudioFile}
+                  onUploadComplete={(songData) => {
+                    console.log('✅ Canción subida:', songData);
+                    setPreloadedAudioFile(null);
+                    closeMoisesModal();
                     
-                    // Esperar un momento para que se actualice la lista de canciones
-                    setTimeout(() => {
-                      // Buscar el botón de la canción y hacer click automático
-                      const songButton = document.querySelector(`[data-song-id="${songData.id}"] button`);
-                      if (songButton) {
-                        console.log('🎯 Haciendo click automático en el botón de la canción:', songData.id);
-                        (songButton as HTMLElement).click();
-                      } else {
-                        console.log(' No se encontró el botón de la canción, recargando...');
-                        window.location.reload();
-                      }
-                    }, 1000);
-                  } else {
-                    console.log(' No hay stems disponibles, recargando página');
-                    window.location.reload();
-                  }
-                }} /> */}
+                    // Buscar y abrir la canción
+                    const song = songs.find(s => s.id === songData.id);
+                    if (song) {
+                      setSelectedSong(song);
+                      setShowSongModal(true);
+                    }
+                  }} 
+                />
               </div>
             </div>
           </div>
@@ -2307,6 +2295,8 @@ export default function Home() {
                       });
                       setCurrentTime(time);
                     }}
+                    songChords={selectedSong?.chords}
+                    songKeyInfo={selectedSong?.keyInfo}
                     showEQButton={true}
                     onEQClick={() => {
                       setShowEQInMixer(true);
@@ -2452,54 +2442,6 @@ export default function Home() {
 
       {/* Metronome Component - REMOVED */}
 
-      {/* Moises Style Upload Modal */}
-      {showMoisesStyleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black mx-auto flex flex-col border border-white border-opacity-20 relative max-w-5xl" style={{transform: 'scale(1.2)'}}>
-            {/* Botón de cerrar */}
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={closeMoisesModal}
-                className="text-white hover:text-gray-400 transition-colors bg-gray-800 hover:bg-gray-700 p-2"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Contenido del Modal */}
-            <div className="overflow-y-auto p-5">
-              <div className="mx-auto space-y-5">
-                {/* Upload Component */}
-                <MoisesStyleUpload 
-                  preloadedFile={youtubeAudioFile}
-                  onUploadComplete={(songData) => {
-                  console.log(' Upload complete - Datos recibidos:', songData);
-                  console.log(' Stems disponibles:', songData.stems);
-                  console.log(' BPM detectado:', songData.bpm);
-                  
-                  // Cerrar el modal y restaurar CoverFlow
-                  closeMoisesModal();
-                  
-                  // Verificar que tenemos los datos necesarios
-                  if (songData.stems && (songData.stems.vocals || songData.stems.instrumental)) {
-                    console.log(' Separación completada, abriendo mixer automáticamente...');
-                    
-                    // Buscar la canción en la lista
-                    const song = songs.find(s => s.id === songData.id);
-                    if (song) {
-                      setSelectedSong(song);
-                      setShowSongModal(true);
-                    }
-                  }
-                }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Pitch & Tempo Modal */}
       {showPitchTempoModal && (
         <PitchTempoModal
@@ -2545,7 +2487,11 @@ export default function Home() {
         <YoutubeExtractModal
           isOpen={showYoutubeExtractModal}
           onClose={closeYoutubeExtractModal}
-          onSeparateTracks={handleYoutubeToSeparation}
+          onSeparateTrack={(file) => {
+            setPreloadedAudioFile(file)
+            setShowMoisesStyleModal(true)
+            setShowYoutubeExtractModal(false)
+          }}
         />
       )}
 

@@ -13,9 +13,10 @@ class SeparationType(str, Enum):
     TWO_STEMS = "2stems"
     FOUR_STEMS = "4stems"
     FIVE_STEMS = "5stems"
-    DEMUCS = "demucs"
 
 class ProcessingTask(BaseModel):
+    model_config = {"extra": "allow"}  # Permitir campos adicionales
+    
     id: str
     original_filename: str
     file_path: str
@@ -28,6 +29,10 @@ class ProcessingTask(BaseModel):
     completed_at: Optional[datetime] = None
     chords: Optional[List[Dict]] = None
     key: Optional[Dict] = None
+    bpm: Optional[int] = None
+    duration: Optional[float] = None
+    timeSignature: Optional[str] = None
+    keyInfo: Optional[Dict] = None
 
 class AudioAnalysis(BaseModel):
     duration: float

@@ -8,22 +8,15 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Audio Processing - Versiones precompiladas
-numpy>=1.24.0,<2.0.0
-scipy>=1.11.0,<2.0.0
-librosa==0.10.1
+# Audio Processing - Versiones actualizadas y compatibles
+numpy>=2.0.0
+scipy>=1.15.0
+librosa==0.11.0
 soundfile==0.12.1
 pydub==0.25.1
 ffmpeg-python==0.2.0
+demucs==4.0.1
 # pyrubberband==0.3.0  # Comentado: no compatible con Python 3.12
-
-# ML/AI - Necesario para separación de audio (CPU-only para reducir tamaño)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.0.0+cpu
-torchaudio==2.0.0+cpu
-spleeter==2.4.0
-demucs>=4.0.0
-diffq==0.2.4
 
 # Utilities
 aiofiles==23.2.1

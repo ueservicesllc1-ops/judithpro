@@ -210,10 +210,69 @@ async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = No
         task.progress = 95
         tasks_storage[task.id] = task
         
+        # Analizar metadata del audio original
+        print(f"[PROCESS] Analizando metadata del audio...")
+        try:
+            bpm, duration = detect_bpm_and_duration(task.file_path)
+            print(f"[PROCESS] BPM detectado: {bpm}, Duración: {duration}s")
+        except Exception as e:
+            print(f"[PROCESS] Error detectando BPM: {e}")
+            bpm = 126
+            duration = 0
+        
+        # Detectar key (tonalidad) y acordes
+        try:
+            from chord_analyzer import ChordAnalyzer
+            analyzer = ChordAnalyzer()
+            
+            # Analizar acordes
+            print(f"[PROCESS] Analizando acordes...")
+            chords_list = analyzer.analyze_chords(task.file_path)
+            
+            # Analizar key
+            key_result = analyzer.analyze_key(task.file_path)
+            
+            # Convertir acordes a dict
+            chords_data = [
+                {
+                    "chord": chord.chord,
+                    "confidence": float(chord.confidence),
+                    "start_time": float(chord.start_time),
+                    "end_time": float(chord.end_time),
+                    "root_note": chord.root_note,
+                    "chord_type": chord.chord_type
+                }
+                for chord in chords_list
+            ]
+            
+            keyInfo_data = {
+                "key": key_result.key if key_result else "Unknown",
+                "mode": key_result.mode if key_result else "major",
+                "confidence": float(key_result.confidence) if key_result else 0.0,
+                "tonic": key_result.tonic if key_result else "Unknown"
+            } if key_result else None
+            
+            key = key_result.key if key_result else "E"
+            print(f"[PROCESS] Acordes detectados: {len(chords_data)}, Key: {key}")
+        except Exception as e:
+            print(f"[PROCESS] Error detectando acordes/key: {e}")
+            import traceback
+            traceback.print_exc()
+            key = "E"
+            chords_data = []
+            keyInfo_data = None
+        
         # Update task with results
         task.stems = stem_urls
         task.status = TaskStatus.COMPLETED
         task.progress = 100
+        task.bpm = bpm
+        task.key = key
+        task.timeSignature = '4/4'
+        task.duration = duration
+        task.chords = chords_data
+        task.keyInfo = keyInfo_data
+        
         tasks_storage[task.id] = task
         
         print(f"\n{'='*60}")
@@ -221,6 +280,7 @@ async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = No
         print(f"   - Status: {task.status}")
         print(f"   - Progress: {task.progress}%")
         print(f"   - Stems: {len(stem_urls)}")
+        print(f"   - BPM: {bpm}, Key: {key}, Duration: {duration}s")
         print(f"{'='*60}\n")
         
     except Exception as e:
@@ -307,16 +367,26 @@ async def get_status(task_id: str):
         stems_urls = task.stems
         print(f"[STATUS] Task completed with {len(stems_urls)} stems")
     
+    # Get metadata from task (with fallbacks)
+    bpm = getattr(task, 'bpm', 126)
+    key = getattr(task, 'key', 'E')
+    timeSignature = getattr(task, 'timeSignature', '4/4')
+    duration = getattr(task, 'duration', 0)
+    chords = getattr(task, 'chords', None)
+    keyInfo = getattr(task, 'keyInfo', None)
+    
     response = {
         "task_id": task_id,
         "status": task.status,
         "progress": task.progress,
         "stems": stems_urls,
         "error": task.error if hasattr(task, 'error') and task.error else None,
-        "bpm": 126,
-        "key": "E",
-        "timeSignature": "4/4",
-        "duration": 0
+        "bpm": bpm,
+        "key": key,
+        "timeSignature": timeSignature,
+        "duration": duration,
+        "chords": chords,
+        "keyInfo": keyInfo
     }
     
     return response
@@ -453,7 +523,7 @@ async def analyze_chords(
         task_id = str(uuid.uuid4())
         
         # Save uploaded file
-        upload_dir = Path("../uploads") / task_id
+        upload_dir = Path("uploads") / task_id
         upload_dir.mkdir(parents=True, exist_ok=True)
         file_path = upload_dir / "audio.wav"
         
@@ -513,7 +583,7 @@ async def analyze_chords_from_url(
         task_id = str(uuid.uuid4())
         
         # Download file from URL
-        upload_dir = Path("../uploads") / task_id
+        upload_dir = Path("uploads") / task_id
         upload_dir.mkdir(parents=True, exist_ok=True)
         file_path = upload_dir / "audio.wav"
         
@@ -525,8 +595,8 @@ async def analyze_chords_from_url(
             url_path = audio_url.replace("http://localhost:8000/audio/", "").replace("http://127.0.0.1:8000/audio/", "")
             # Try to find the file in the uploads directory
             
-            # Search for the file in uploads directory
-            uploads_dir = Path("../uploads")
+            # Search for the file in uploads directory (current directory is backend/)
+            uploads_dir = Path("uploads")
             found_file = None
             
             for root, dirs, files in os.walk(uploads_dir):
@@ -670,12 +740,16 @@ async def process_chord_analysis(task: ProcessingTask):
         
         task.progress = 100
         task.status = TaskStatus.COMPLETED
+        tasks_storage[task.id] = task
         
         print(f"Chord analysis completed for task {task.id}")
+        print(f"Chords: {len(task.chords) if task.chords else 0}")
+        print(f"Key: {task.key}")
         
     except Exception as e:
         task.status = TaskStatus.FAILED
         task.error = str(e)
+        tasks_storage[task.id] = task
         print(f"Chord analysis error: {e}")
 
 @app.post("/api/analyze-bpm")
@@ -916,10 +990,91 @@ async def analyze_audio(file: UploadFile = File(...)):
         print(f"Error analyzing audio: {e}")
         raise HTTPException(status_code=500, detail=f"Error analyzing audio: {str(e)}")
 
+async def extract_with_ytdlp(youtube_url: str, video_id: str):
+    """Extraer audio usando yt-dlp"""
+    try:
+        import subprocess
+        import base64
+        import re
+        
+        print(f"[yt-dlp] Descargando audio de: {youtube_url}")
+        
+        # Crear directorio temporal
+        temp_dir = Path("temp_youtube")
+        temp_dir.mkdir(exist_ok=True)
+        
+        # Primero obtener el título real del video
+        print(f"[yt-dlp] Obteniendo título del video...")
+        title_cmd = [
+            "yt-dlp",
+            "--get-title",
+            youtube_url
+        ]
+        
+        title_result = subprocess.run(title_cmd, capture_output=True, text=True, timeout=30)
+        
+        if title_result.returncode == 0 and title_result.stdout.strip():
+            video_title = title_result.stdout.strip()
+            # Limpiar caracteres no válidos para nombre de archivo
+            video_title = re.sub(r'[<>:"/\\|?*]', '_', video_title)
+            print(f"[yt-dlp] Título del video: {video_title}")
+        else:
+            video_title = video_id
+            print(f"[yt-dlp] No se pudo obtener título, usando video_id: {video_id}")
+        
+        output_file = temp_dir / f"{video_id}.mp3"
+        
+        # Comando yt-dlp para descargar solo audio
+        cmd = [
+            "yt-dlp",
+            "-x",  # Extract audio
+            "--audio-format", "mp3",
+            "--audio-quality", "0",  # Best quality
+            "-o", str(output_file),
+            youtube_url
+        ]
+        
+        print(f"[yt-dlp] Ejecutando: {' '.join(cmd)}")
+        
+        # Ejecutar yt-dlp
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        if result.returncode != 0:
+            print(f"[yt-dlp] Error: {result.stderr}")
+            raise HTTPException(status_code=500, detail=f"yt-dlp error: {result.stderr}")
+        
+        print(f"[yt-dlp] Descarga completada: {output_file}")
+        
+        # Leer el archivo
+        with open(output_file, 'rb') as f:
+            audio_data = f.read()
+        
+        # Limpiar archivo temporal
+        output_file.unlink(missing_ok=True)
+        
+        # Convertir a base64
+        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        
+        return {
+            "success": True,
+            "title": video_title,
+            "duration": 0,
+            "audioData": audio_base64,
+            "format": "mp3"
+        }
+        
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Timeout descargando de YouTube")
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="yt-dlp no está instalado. Instálalo con: pip install yt-dlp")
+    except Exception as e:
+        print(f"[yt-dlp] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/youtube-extract")
 async def extract_youtube_audio(request: Request):
     """
-    Extrae audio de un video de YouTube usando RapidAPI
+    Extrae audio de un video de YouTube usando RapidAPI o yt-dlp
     """
     try:
         import httpx
@@ -944,12 +1099,9 @@ async def extract_youtube_audio(request: Request):
         # Obtener API key de variable de entorno
         rapidapi_key = os.getenv('RAPIDAPI_KEY')
         if not rapidapi_key:
-            # Fallback: intentar con yt-dlp si no hay API key
-            print("[YouTube API] No RAPIDAPI_KEY found, usando método alternativo")
-            raise HTTPException(
-                status_code=500, 
-                detail="YouTube download no configurado. Por favor sube el archivo MP3 directamente."
-            )
+            # Fallback: usar yt-dlp directamente
+            print("[YouTube API] No RAPIDAPI_KEY found, usando yt-dlp")
+            return await extract_with_ytdlp(youtube_url, video_id)
         
         # Llamar a RapidAPI
         async with httpx.AsyncClient(timeout=60.0) as client:

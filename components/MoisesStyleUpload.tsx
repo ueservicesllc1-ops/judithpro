@@ -418,7 +418,9 @@ const MoisesStyleUpload: React.FC<MoisesStyleUploadProps> = ({ onUploadComplete,
               bass: `${getBackendUrl()}/audio/${taskId}/bass.wav`,
               other: `${getBackendUrl()}/audio/${taskId}/other.wav`
             },
-            separationTaskId: taskId
+            separationTaskId: taskId,
+            chords: statusResult.chords || [],
+            keyInfo: statusResult.keyInfo || null
           };
 
           console.log('[FIRESTORE] About to save song...');

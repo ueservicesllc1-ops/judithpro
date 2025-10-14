@@ -22,31 +22,69 @@ const ChordAnalysisModal: React.FC<ChordAnalysisModalProps> = ({ isOpen, onClose
   const [detectedKey, setDetectedKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Análisis básico de acordes (simplificado)
-  const analyzeChords = async (audioBuffer: AudioBuffer) => {
-    console.log('🎸 Analizando acordes...')
+  // Análisis de acordes usando el backend
+  const analyzeChords = async (file: File) => {
+    console.log('🎸 Enviando al backend para análisis de acordes...')
     
-    // Simular análisis por ahora
-    // En producción, esto usaría una librería como essentia.js o chords-detection
-    const duration = audioBuffer.duration
-    const segmentDuration = 2 // Análisis cada 2 segundos
-    const numSegments = Math.floor(duration / segmentDuration)
-    
-    const possibleChords = ['C', 'Dm', 'Em', 'F', 'G', 'Am', 'Bdim']
-    const detectedChords: ChordInfo[] = []
-    
-    for (let i = 0; i < numSegments; i++) {
-      const time = i * segmentDuration
-      const chord = possibleChords[Math.floor(Math.random() * possibleChords.length)]
-      detectedChords.push({
-        time,
-        chord,
-        confidence: 0.7 + Math.random() * 0.3 // 70-100%
+    try {
+      // Paso 1: Subir archivo al backend
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const uploadResponse = await fetch('http://localhost:8000/api/analyze-chords', {
+        method: 'POST',
+        body: formData
       })
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Error al subir archivo al backend')
+      }
+      
+      const uploadData = await uploadResponse.json()
+      const taskId = uploadData.task_id
+      console.log('✅ Archivo subido, task ID:', taskId)
+      
+      // Paso 2: Polling para obtener resultados
+      let attempts = 0
+      const maxAttempts = 60 // 60 segundos máximo
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Esperar 1 segundo
+        
+        const statusResponse = await fetch(`http://localhost:8000/api/chord-analysis/${taskId}`)
+        const statusData = await statusResponse.json()
+        
+        console.log(`Intento ${attempts + 1}: Status =`, statusData.status, `Progress =`, statusData.progress)
+        
+        if (statusData.status === 'completed') {
+          console.log('✅ Análisis completado!')
+          
+          // Convertir formato del backend al formato del componente
+          const detectedChords: ChordInfo[] = statusData.chords.map((c: any) => ({
+            time: c.start_time,
+            chord: c.chord,
+            confidence: c.confidence
+          }))
+          
+          return {
+            chords: detectedChords,
+            key: statusData.key?.key || 'Unknown'
+          }
+        }
+        
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Análisis falló')
+        }
+        
+        attempts++
+      }
+      
+      throw new Error('Timeout: El análisis tardó demasiado')
+      
+    } catch (error) {
+      console.error('❌ Error en análisis de acordes:', error)
+      throw error
     }
-    
-    console.log(`✅ ${detectedChords.length} acordes detectados`)
-    return detectedChords
   }
 
   // Cargar y analizar archivo
@@ -62,33 +100,16 @@ const ChordAnalysisModal: React.FC<ChordAnalysisModalProps> = ({ isOpen, onClose
     try {
       console.log('📁 Cargando archivo:', file.name)
       
-      // Decodificar audio
-      const arrayBuffer = await file.arrayBuffer()
-      const audioContext = new AudioContext()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      // Analizar acordes con el backend
+      const result = await analyzeChords(file)
+      setChords(result.chords)
+      setDetectedKey(result.key)
       
-      console.log('✅ Audio decodificado')
-      
-      // Analizar acordes
-      const detectedChords = await analyzeChords(audioBuffer)
-      setChords(detectedChords)
-      
-      // Detectar tonalidad principal (el acorde más común)
-      const chordCounts = detectedChords.reduce((acc, c) => {
-        acc[c.chord] = (acc[c.chord] || 0) + 1
-        return acc
-      }, {} as Record<string, number>)
-      
-      const mostCommonChord = Object.entries(chordCounts)
-        .sort((a, b) => b[1] - a[1])[0][0]
-      
-      setDetectedKey(mostCommonChord)
-      
-      await audioContext.close()
+      console.log(`✅ ${result.chords.length} acordes detectados, tonalidad: ${result.key}`)
       
     } catch (error) {
       console.error('❌ Error analizando acordes:', error)
-      alert('Error al analizar el archivo de audio')
+      alert('Error al analizar el archivo de audio: ' + (error instanceof Error ? error.message : 'Error desconocido'))
     } finally {
       setIsAnalyzing(false)
     }

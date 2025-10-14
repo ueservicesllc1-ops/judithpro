@@ -46,6 +46,20 @@ export interface Song {
     [key: string]: string
   }
   originalUrl?: string
+  chords?: Array<{
+    chord: string
+    confidence: number
+    start_time: number
+    end_time: number
+    root_note: string
+    chord_type: string
+  }>
+  keyInfo?: {
+    key: string
+    mode: string
+    confidence: number
+    tonic: string
+  }
 }
 
 // Guardar nueva canción en Firestore

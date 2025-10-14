@@ -1,19 +1,19 @@
 'use client'
 
 import React, { useState } from 'react'
-import { X, Youtube, Download, Scissors, Loader2 } from 'lucide-react'
+import { X, Youtube, Download, Loader2, Music2 } from 'lucide-react'
 import AdminModalLabel from './AdminModalLabel'
 
 interface YoutubeExtractModalProps {
   isOpen: boolean
   onClose: () => void
-  onSeparateTracks?: (audioFile: File) => void
+  onSeparateTrack?: (file: File) => void
 }
 
 const YoutubeExtractModal: React.FC<YoutubeExtractModalProps> = ({ 
   isOpen, 
-  onClose, 
-  onSeparateTracks 
+  onClose,
+  onSeparateTrack
 }) => {
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [isExtracting, setIsExtracting] = useState(false)
@@ -109,15 +109,6 @@ const YoutubeExtractModal: React.FC<YoutubeExtractModalProps> = ({
     a.click()
     URL.revokeObjectURL(url)
     console.log('✅ Audio descargado:', extractedAudio.name)
-  }
-
-  // Enviar a separación de tracks
-  const handleSeparate = () => {
-    if (!extractedAudio || !onSeparateTracks) return
-    
-    console.log('🎵 Enviando audio a separación de tracks')
-    onSeparateTracks(extractedAudio)
-    onClose()
   }
 
   if (!isOpen) return null
@@ -219,10 +210,10 @@ const YoutubeExtractModal: React.FC<YoutubeExtractModalProps> = ({
 
             {/* Opciones */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Opción 1: Descargar */}
+              {/* Descargar */}
               <button
                 onClick={handleDownload}
-                className="py-6 px-4 font-bold text-base transition-all duration-200 flex flex-col items-center justify-center space-y-3 border bg-gradient-to-br from-green-500/40 via-green-600/30 to-green-700/20 hover:from-green-500/50 text-white border-green-400/40 rounded-lg"
+                className="py-6 px-6 font-bold text-base transition-all duration-200 flex flex-col items-center justify-center space-y-3 border bg-gradient-to-br from-green-500/40 via-green-600/30 to-green-700/20 hover:from-green-500/50 text-white border-green-400/40 rounded-lg"
                 style={{
                   backdropFilter: 'blur(10px)',
                   WebkitBackdropFilter: 'blur(10px)',
@@ -230,23 +221,28 @@ const YoutubeExtractModal: React.FC<YoutubeExtractModalProps> = ({
                 }}
               >
                 <Download className="w-8 h-8" />
-                <span>Descargar MP3</span>
-                <span className="text-xs text-green-200">Guardar en tu dispositivo</span>
+                <span>Descargar Audio</span>
+                <span className="text-xs text-green-200">MP3 en tu PC</span>
               </button>
 
-              {/* Opción 2: Separar Tracks */}
+              {/* Separar Track */}
               <button
-                onClick={handleSeparate}
-                className="py-6 px-4 font-bold text-base transition-all duration-200 flex flex-col items-center justify-center space-y-3 border bg-gradient-to-br from-purple-500/40 via-purple-600/30 to-purple-700/20 hover:from-purple-500/50 text-white border-purple-400/40 rounded-lg"
+                onClick={() => {
+                  if (onSeparateTrack && extractedAudio) {
+                    onSeparateTrack(extractedAudio)
+                    onClose()
+                  }
+                }}
+                className="py-6 px-6 font-bold text-base transition-all duration-200 flex flex-col items-center justify-center space-y-3 border bg-gradient-to-br from-blue-500/40 via-blue-600/30 to-blue-700/20 hover:from-blue-500/50 text-white border-blue-400/40 rounded-lg"
                 style={{
                   backdropFilter: 'blur(10px)',
                   WebkitBackdropFilter: 'blur(10px)',
-                  boxShadow: '0 8px 20px rgba(168, 85, 247, 0.4), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.2)'
+                  boxShadow: '0 8px 20px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.2)'
                 }}
               >
-                <Scissors className="w-8 h-8" />
-                <span>Separar Tracks</span>
-                <span className="text-xs text-purple-200">Voces, batería, bajo, etc.</span>
+                <Music2 className="w-8 h-8" />
+                <span>Separar Track</span>
+                <span className="text-xs text-blue-200">Extraer stems con IA</span>
               </button>
             </div>
 
