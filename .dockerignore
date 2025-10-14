@@ -1,13 +1,71 @@
-Dockerfile
-.dockerignore
-node_modules
-npm-debug.log
-README.md
-.env
+# Dependencies - se instalarán durante build
+node_modules/
+npm-debug.log*
+
+# Build outputs - se generarán durante build
+.next/
+out/
+build/
+dist/
+
+# Environment files
 .env.local
+.env.development.local
+.env.test.local
 .env.production.local
-.env.local
-.git
+
+# Logs
+*.log
+logs/
+
+# Audio files - NO necesarios en build
+*.wav
+*.mp3
+*.m4a
+*.flac
+uploads/
+backend/uploads/
+backend/output/
+
+# Temporary files
+temp_analysis/
+temp_conversion/
+backend/temp_*/
+
+# Git
+.git/
 .gitignore
-.next
-.vercel
+.gitattributes
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+backend/__pycache__/
+backend/judith-env/
+
+# Database files
+*.db
+*.sqlite
+
+# Railway/Cloud specific
+railway.json
+railway-env.json
+.gcloudignore
+
+# Documentation
+*.md
+!README.md
+
+# Backup files
+*.backup
+Dockerfile.backup
