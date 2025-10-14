@@ -2177,7 +2177,9 @@ return (
           
           {/* Lista de tracks disponibles */}
           <div className="space-y-2 mb-6">
-            {Object.entries(stems).map(([trackKey, trackUrl]) => (
+            {Object.entries(stems)
+              .filter(([_, url]) => url && url.trim() !== '') // Solo mostrar pistas con URL válida
+              .map(([trackKey, trackUrl]) => (
               <label 
                 key={trackKey}
                 className="flex items-center gap-3 p-2 bg-gray-700 rounded hover:bg-gray-650 cursor-pointer transition-colors"

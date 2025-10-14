@@ -1455,8 +1455,8 @@ async def download_track(request: Request):
             data = dict(form)
             print(f"[DOWNLOAD TRACK] Received form data: {data}")
         
-        track_url = data.get('url') or data.get('trackUrl') or data.get('fileUrl')
-        track_name = data.get('name') or data.get('trackName') or 'track'
+        track_url = data.get('trackUrl') or data.get('url') or data.get('fileUrl')
+        track_name = data.get('trackName') or data.get('name') or 'track'
         
         print(f"[DOWNLOAD TRACK] Extracted - URL: {track_url}, Name: {track_name}")
         
