@@ -27,15 +27,15 @@ class AudioProcessor:
             if task_callback:
                 task_callback(20, "Starting Demucs AI separation...")
             
-            # Run Demucs command - htdemucs_6s (ligero y rápido para Railway)
+            # Run Demucs command - htdemucs_6s (OPTIMIZADO para Railway - rápido y ligero)
             cmd = [
                 "python", "-m", "demucs",
-                "--name", "htdemucs_6s",  # Modelo ligero, da 4 stems (vocals, drums, bass, other)
+                "--name", "htdemucs_6s",  # Modelo ligero y rápido, da 4 stems
                 "--out", str(output_dir),
                 file_path
             ]
             
-            print(f"Running Demucs command: {' '.join(cmd)}")
+            print(f"🚀 Running Demucs command: {' '.join(cmd)}")
             
             # Update progress: Processing with Demucs
             if task_callback:
