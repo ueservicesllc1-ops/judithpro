@@ -27,10 +27,10 @@ class AudioProcessor:
             if task_callback:
                 task_callback(20, "Starting Demucs AI separation...")
             
-            # Run Demucs command - htdemucs (MEJOR CALIDAD)
+            # Run Demucs command - htdemucs_ft (BALANCE calidad/velocidad para Railway)
             cmd = [
                 "python", "-m", "demucs",
-                "--name", "htdemucs",  # Mejor modelo de alta calidad
+                "--name", "htdemucs_ft",  # Balance perfecto: buena calidad + rápido
                 "--out", str(output_dir),
                 file_path
             ]
