@@ -1445,12 +1445,24 @@ async def download_track(request: Request):
     Endpoint para descargar una pista en formato MP3
     """
     try:
-        data = await request.json()
-        track_url = data.get('url')
-        track_name = data.get('name', 'track')
+        # Intentar leer como JSON
+        try:
+            data = await request.json()
+            print(f"[DOWNLOAD TRACK] Received JSON data: {data}")
+        except:
+            # Si no es JSON, intentar como form data
+            form = await request.form()
+            data = dict(form)
+            print(f"[DOWNLOAD TRACK] Received form data: {data}")
+        
+        track_url = data.get('url') or data.get('trackUrl') or data.get('fileUrl')
+        track_name = data.get('name') or data.get('trackName') or 'track'
+        
+        print(f"[DOWNLOAD TRACK] Extracted - URL: {track_url}, Name: {track_name}")
         
         if not track_url:
-            raise HTTPException(status_code=400, detail="URL is required")
+            print(f"[DOWNLOAD TRACK] ERROR: No URL found in data: {data}")
+            raise HTTPException(status_code=400, detail=f"URL is required. Received data: {list(data.keys())}")
         
         print(f"[DOWNLOAD TRACK] Downloading: {track_name} from {track_url}")
         
