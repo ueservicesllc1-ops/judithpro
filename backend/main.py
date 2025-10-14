@@ -1099,6 +1099,49 @@ async def analyze_key_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.post("/api/convert-to-mp3")
+async def convert_to_mp3(audio_file: UploadFile = File(...)):
+    """Convierte un archivo de audio a MP3"""
+    try:
+        import tempfile
+        from pydub import AudioSegment
+        
+        # Guardar archivo temporal
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_input:
+            content = await audio_file.read()
+            tmp_input.write(content)
+            tmp_input_path = tmp_input.name
+        
+        # Convertir a MP3
+        audio = AudioSegment.from_file(tmp_input_path)
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_output:
+            tmp_output_path = tmp_output.name
+        
+        audio.export(tmp_output_path, format="mp3", bitrate="320k")
+        
+        # Leer el archivo MP3
+        with open(tmp_output_path, "rb") as f:
+            mp3_data = f.read()
+        
+        # Limpiar archivos temporales
+        os.remove(tmp_input_path)
+        os.remove(tmp_output_path)
+        
+        # Retornar el MP3
+        from fastapi.responses import Response
+        return Response(
+            content=mp3_data,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": f'attachment; filename="{audio_file.filename.replace(".wav", ".mp3")}"'
+            }
+        )
+        
+    except Exception as e:
+        print(f"Error converting to MP3: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def extract_with_ytdlp(youtube_url: str, video_id: str):
     """Extraer audio usando yt-dlp"""
     try:
