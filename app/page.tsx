@@ -42,6 +42,7 @@ import HeroPopup from '@/components/HeroPopup'
 import AdminModalLabel from '@/components/AdminModalLabel'
 // import ChordAnalyzer from '@/components/ChordAnalyzer'
 import { getUserSongs, subscribeToUserSongs, deleteSong, Song } from '@/lib/firestore'
+import { getBackendUrl } from '@/lib/config'
 // import useAudioCleanup from '@/hooks/useAudioCleanup'
 
 export default function Home() {
@@ -419,7 +420,22 @@ export default function Home() {
     // Suscribirse a cambios en tiempo real
     const unsubscribe = subscribeToUserSongs(user.uid, (userSongs) => {
       console.log('Received songs in UI:', userSongs.length)
-      setSongs(userSongs)
+      
+      // Reemplazar localhost:8000 por backend URL correcto
+      const backendUrl = getBackendUrl()
+      const fixedSongs = userSongs.map(song => ({
+        ...song,
+        fileUrl: song.fileUrl?.replace('http://localhost:8000', backendUrl) || song.fileUrl,
+        stems: song.stems ? {
+          vocals: song.stems.vocals?.replace('http://localhost:8000', backendUrl),
+          drums: song.stems.drums?.replace('http://localhost:8000', backendUrl),
+          bass: song.stems.bass?.replace('http://localhost:8000', backendUrl),
+          other: song.stems.other?.replace('http://localhost:8000', backendUrl),
+          instrumental: song.stems.instrumental?.replace('http://localhost:8000', backendUrl)
+        } : song.stems
+      }))
+      
+      setSongs(fixedSongs)
       setSongsLoading(false)
     })
 
