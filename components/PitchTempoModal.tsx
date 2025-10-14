@@ -164,6 +164,10 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
 
       const source = audioContextRef.current.createBufferSource()
       source.buffer = audioBufferRef.current
+      
+      // Aplicar cambios de tempo y pitch
+      source.playbackRate.value = tempo / 100
+      source.detune.value = pitch * 100
 
       if (!gainNodeRef.current) {
         gainNodeRef.current = audioContextRef.current.createGain()
@@ -277,12 +281,15 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
 
   // Aplicar cambios en tiempo real
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && sourceNodeRef.current) {
       const currentPos = currentTime
       pauseAudio()
-      setCurrentTime(currentPos)
-      setTimeout(() => playAudio(), 10)
+      setTimeout(() => {
+        setCurrentTime(currentPos)
+        playAudio()
+      }, 50)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pitch, tempo])
 
   useEffect(() => {
