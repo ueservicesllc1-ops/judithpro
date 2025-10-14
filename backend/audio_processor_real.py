@@ -27,10 +27,11 @@ class AudioProcessor:
             if task_callback:
                 task_callback(20, "Starting Demucs AI separation...")
             
-            # Run Demucs command - usando mdx (NO necesita diffq)
+            # Run Demucs command - htdemucs_6s (más ligero y rápido para Railway)
             cmd = [
                 "python", "-m", "demucs",
-                "--name", "mdx",  # Modelo SIN diffq
+                "--name", "htdemucs_6s",  # Modelo ligero, 6 stems, SIN diffq
+                "--two-stems", "vocals",  # Solo vocals/instrumental = MUY rápido
                 "--out", str(output_dir),
                 file_path
             ]
