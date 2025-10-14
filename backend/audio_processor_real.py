@@ -91,10 +91,14 @@ class AudioProcessor:
             file_name = Path(file_path).stem
             
             # Demucs creates a folder with the model name
-            # Buscar en todas las subcarpetas posibles
+            # Buscar en todas las subcarpetas posibles según el modelo
             possible_dirs = [
+                output_dir / "htdemucs_6s" / file_name,
+                output_dir / "htdemucs_6s" / "original",
                 output_dir / "htdemucs" / file_name,
                 output_dir / "htdemucs" / "original",
+                output_dir / "mdx" / file_name,
+                output_dir / "mdx" / "original",
             ]
             
             model_dir = None
