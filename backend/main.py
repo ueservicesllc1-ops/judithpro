@@ -37,7 +37,8 @@ app.add_middleware(
         "https://moises2-production.up.railway.app",
         "https://moises2-production-d1cb.up.railway.app",
         "https://judith.life",
-        "https://www.judith.life"
+        "https://www.judith.life",
+        "http://34.135.41.116:3000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
