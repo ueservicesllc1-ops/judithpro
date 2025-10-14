@@ -1438,6 +1438,81 @@ async def pitch_shift_audio(request: Request):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/download-track")
+@app.post("/download-track")
+async def download_track(request: Request):
+    """
+    Endpoint para descargar una pista en formato MP3
+    """
+    try:
+        data = await request.json()
+        track_url = data.get('url')
+        track_name = data.get('name', 'track')
+        
+        if not track_url:
+            raise HTTPException(status_code=400, detail="URL is required")
+        
+        print(f"[DOWNLOAD TRACK] Downloading: {track_name} from {track_url}")
+        
+        # Si es una URL de B2, descargarla directamente
+        if track_url.startswith('http'):
+            import requests
+            response = requests.get(track_url, timeout=30)
+            response.raise_for_status()
+            audio_data = response.content
+        else:
+            # Si es una ruta local
+            file_path = Path(track_url)
+            if not file_path.exists():
+                raise HTTPException(status_code=404, detail="File not found")
+            with open(file_path, 'rb') as f:
+                audio_data = f.read()
+        
+        # Convertir a MP3 si es necesario
+        temp_input = Path(tempfile.gettempdir()) / f"download_input_{uuid.uuid4()}.wav"
+        temp_output = Path(tempfile.gettempdir()) / f"download_output_{uuid.uuid4()}.mp3"
+        
+        try:
+            # Guardar audio temporal
+            with open(temp_input, 'wb') as f:
+                f.write(audio_data)
+            
+            # Convertir a MP3 usando pydub
+            from pydub import AudioSegment
+            audio = AudioSegment.from_file(str(temp_input))
+            audio.export(str(temp_output), format='mp3', bitrate='320k')
+            
+            # Leer MP3 convertido
+            with open(temp_output, 'rb') as f:
+                mp3_data = f.read()
+            
+            # Limpiar archivos temporales
+            temp_input.unlink(missing_ok=True)
+            temp_output.unlink(missing_ok=True)
+            
+            # Devolver MP3
+            return StreamingResponse(
+                iter([mp3_data]),
+                media_type="audio/mpeg",
+                headers={
+                    "Content-Disposition": f"attachment; filename={track_name}.mp3"
+                }
+            )
+            
+        except Exception as e:
+            # Limpiar en caso de error
+            temp_input.unlink(missing_ok=True)
+            temp_output.unlink(missing_ok=True)
+            raise
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[DOWNLOAD TRACK] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
