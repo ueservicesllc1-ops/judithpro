@@ -451,7 +451,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <AdminModalLabel modalName="PitchTempoModal" />
-      <div className="bg-gray-900 w-[90vw] h-[90vh] mx-4 flex flex-col border border-gray-600">
+      <div className="bg-gray-900 w-[80vw] h-[80vh] mx-4 flex flex-col border border-gray-600">
         {/* Header */}
         <div className="bg-black h-12 flex items-center justify-between px-4 border-b border-gray-600">
           <div className="flex items-center space-x-3">
@@ -467,25 +467,25 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
         </div>
 
         {/* Contenido Principal */}
-        <div className="flex-1 p-4 overflow-y-auto">
-          <div className="space-y-4">
+        <div className="flex-1 p-3 overflow-y-auto">
+          <div className="space-y-3">
             
             {/* Sección superior dividida en dos */}
             <div className="grid grid-cols-2 gap-3">
               
               {/* Mitad izquierda - Tonalidad Detectada */}
-              <div className="bg-gray-800 p-3 border border-gray-600">
-                <div className="flex items-center justify-between mb-2">
+              <div className="bg-gray-800 p-2 border border-gray-600">
+                <div className="flex items-center justify-between mb-1.5">
                   <h3 className="text-xs font-semibold text-white flex items-center">
-                    <Music className="w-3 h-3 mr-1.5 text-white" />
+                    <Music className="w-3 h-3 mr-1 text-white" />
                     Tonalidad Detectada
                   </h3>
                   {isAnalyzing && (
                     <Loader className="w-3 h-3 animate-spin text-white" />
                   )}
                 </div>
-                <div className="text-center p-2 bg-gray-700 border border-gray-600">
-                  <div className="text-xl font-bold text-white">
+                <div className="text-center p-1.5 bg-gray-700 border border-gray-600">
+                  <div className="text-lg font-bold text-white">
                     {key === '-' ? 'No detectada' : key}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">
@@ -495,7 +495,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
               </div>
 
               {/* Mitad derecha - Subir Canción */}
-              <div className="bg-gray-800 p-3 border border-gray-600">
+              <div className="bg-gray-800 p-2 border border-gray-600">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -503,24 +503,24 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                   onChange={handleFileSelect}
                   className="hidden"
                 />
-                <h3 className="text-xs font-semibold text-white flex items-center mb-2">
-                  <Upload className="w-3 h-3 mr-1.5 text-white" />
+                <h3 className="text-xs font-semibold text-white flex items-center mb-1.5">
+                  <Upload className="w-3 h-3 mr-1 text-white" />
                   Subir Canción
                 </h3>
                 {!audioUrl ? (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full bg-white hover:bg-gray-200 text-black px-4 py-2 font-semibold transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-600"
+                    className="w-full bg-white hover:bg-gray-200 text-black px-3 py-1.5 text-sm font-semibold transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-600"
                   >
-                    <Upload className="w-4 h-4" />
+                    <Upload className="w-3 h-3" />
                     <span>Seleccionar Archivo</span>
                   </button>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 p-2 bg-gray-700 border border-gray-600">
-                      <Music className="w-4 h-4 text-white flex-shrink-0" />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center space-x-2 p-1.5 bg-gray-700 border border-gray-600">
+                      <Music className="w-3 h-3 text-white flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium truncate">{audioFile?.name}</p>
+                        <p className="text-white text-xs font-medium truncate">{audioFile?.name}</p>
                         <p className="text-gray-400 text-xs">
                           {Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}
                         </p>
@@ -528,7 +528,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                     </div>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full bg-gray-600 hover:bg-gray-500 text-white px-3 py-1.5 text-sm transition-colors flex items-center justify-center space-x-1 border border-gray-600"
+                      className="w-full bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 text-xs transition-colors flex items-center justify-center space-x-1 border border-gray-600"
                     >
                       <Upload className="w-3 h-3" />
                       <span>Cambiar</span>
@@ -544,31 +544,31 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
             </div>
 
             {/* Controles */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               
               {/* Panel Izquierdo */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 
                 {/* Control de Tempo */}
-                <div className="bg-gray-800 p-6 border border-gray-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center">
-                      <Target className="w-5 h-5 mr-2 text-white" />
+                <div className="bg-gray-800 p-4 border border-gray-600">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-semibold text-white flex items-center">
+                      <Target className="w-4 h-4 mr-2 text-white" />
                       Tempo (Velocidad)
                     </h3>
                     <button
                       onClick={() => setTempo(100)}
                       className="text-xs text-gray-400 hover:text-white transition-colors"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-3 h-3" />
                     </button>
                   </div>
                   
-                  <div className="text-center mb-6">
-                    <div className="text-4xl font-bold text-white mb-2">
+                  <div className="text-center mb-4">
+                    <div className="text-3xl font-bold text-white mb-1">
                       {tempo}%
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-xs text-gray-400">
                       {detectedBpm > 0 ? (
                         `BPM Original: ${detectedBpm.toFixed(0)} → ${(detectedBpm * tempo / 100).toFixed(0)}`
                       ) : (
@@ -577,7 +577,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <input
                       type="range"
                       min="50"
@@ -593,14 +593,14 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                       <button
                         onClick={() => setTempo(Math.max(50, tempo - 5))}
                         disabled={!audioUrl}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 transition-colors disabled:opacity-50 border border-gray-600"
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 text-sm transition-colors disabled:opacity-50 border border-gray-600"
                       >
                         -5%
                       </button>
                       <button
                         onClick={() => setTempo(Math.min(200, tempo + 5))}
                         disabled={!audioUrl}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 transition-colors disabled:opacity-50 border border-gray-600"
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 text-sm transition-colors disabled:opacity-50 border border-gray-600"
                       >
                         +5%
                       </button>
@@ -609,50 +609,50 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                 </div>
 
                 {/* Control de Pitch */}
-                <div className="bg-gray-800 p-6 border border-gray-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center">
-                      <Music className="w-5 h-5 mr-2 text-white" />
+                <div className="bg-gray-800 p-4 border border-gray-600">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-semibold text-white flex items-center">
+                      <Music className="w-4 h-4 mr-2 text-white" />
                       Pitch / Tono
                     </h3>
                     <button
                       onClick={() => setPitch(0)}
                       className="text-xs text-gray-400 hover:text-white transition-colors"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-3 h-3" />
                     </button>
                   </div>
                   
                   {/* Display principal con botones + y - a los costados */}
-                  <div className="text-center mb-6">
-                    <div className="flex items-center justify-center gap-6">
+                  <div className="text-center mb-4">
+                    <div className="flex items-center justify-center gap-4">
                       <button
                         onClick={() => setPitch(Math.max(-12, pitch - 1))}
                         disabled={!audioUrl || pitch <= -12}
-                        className="w-16 h-16 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-white text-4xl font-bold border-2 border-gray-600 transition-colors flex items-center justify-center"
+                        className="w-12 h-12 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-white text-3xl font-bold border-2 border-gray-600 transition-colors flex items-center justify-center"
                       >
                         −
                       </button>
                       
-                      <div className="text-6xl font-bold text-white min-w-[120px]">
+                      <div className="text-4xl font-bold text-white min-w-[100px]">
                         {pitch > 0 ? `+${pitch}` : pitch}
                       </div>
                       
                       <button
                         onClick={() => setPitch(Math.min(12, pitch + 1))}
                         disabled={!audioUrl || pitch >= 12}
-                        className="w-16 h-16 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-white text-4xl font-bold border-2 border-gray-600 transition-colors flex items-center justify-center"
+                        className="w-12 h-12 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-50 text-white text-3xl font-bold border-2 border-gray-600 transition-colors flex items-center justify-center"
                       >
                         +
                       </button>
                     </div>
                     
-                    <div className="text-sm text-gray-400 mt-2">
+                    <div className="text-xs text-gray-400 mt-1">
                       {pitch === 0 ? 'Original' : pitch > 0 ? 'Más agudo' : 'Más grave'}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <input
                       type="range"
                       min="-12"
@@ -670,7 +670,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                           key={value}
                           onClick={() => setPitch(value)}
                           disabled={!audioUrl}
-                          className={`flex-1 py-2 px-3 text-sm transition-colors disabled:opacity-50 border border-gray-600 ${
+                          className={`flex-1 py-1.5 px-2 text-xs transition-colors disabled:opacity-50 border border-gray-600 ${
                             pitch === value 
                               ? 'bg-white text-black' 
                               : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
@@ -686,14 +686,14 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
               </div>
 
               {/* Panel Derecho */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 
                 {/* Reproductor */}
-                <div className="bg-gray-800 p-6 border border-gray-600">
-                  <h3 className="text-lg font-semibold text-white mb-4">Audio Preview</h3>
+                <div className="bg-gray-800 p-4 border border-gray-600">
+                  <h3 className="text-base font-semibold text-white mb-3">Audio Preview</h3>
                   
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-400 mb-2">
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1.5">
                       <span>{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
                       <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
                     </div>
@@ -709,54 +709,54 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex items-center justify-center space-x-4">
+                  <div className="flex items-center justify-center space-x-3">
                     <button
                       onClick={togglePlayPause}
                       disabled={!audioUrl}
-                      className="bg-white hover:bg-gray-200 disabled:bg-gray-600 text-black p-4 transition-colors border border-gray-600"
+                      className="bg-white hover:bg-gray-200 disabled:bg-gray-600 text-black p-3 transition-colors border border-gray-600"
                     >
-                      {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </button>
                     
                     <button
                       onClick={stopAudio}
                       disabled={!audioUrl || (!isPlaying && currentTime === 0)}
-                      className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-white p-4 transition-colors border border-gray-600"
+                      className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-white p-3 transition-colors border border-gray-600"
                     >
-                      <Square className="w-6 h-6" />
+                      <Square className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
 
                 {/* Visualización de Efectos */}
-                <div className="bg-gray-800 p-6 border border-gray-600">
-                  <h3 className="text-lg font-semibold text-white mb-4">Efectos Aplicados en Tiempo Real</h3>
+                <div className="bg-gray-800 p-4 border border-gray-600">
+                  <h3 className="text-base font-semibold text-white mb-3">Efectos Aplicados en Tiempo Real</h3>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     {/* Columna 1 - Efectos */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-gray-700 border border-gray-600">
-                        <span className="text-gray-300 text-sm">Tempo</span>
-                        <span className="text-white font-mono text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2 bg-gray-700 border border-gray-600">
+                        <span className="text-gray-300 text-xs">Tempo</span>
+                        <span className="text-white font-mono text-xs">
                           {tempo}%
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 bg-gray-700 border border-gray-600">
-                        <span className="text-gray-300 text-sm">Pitch</span>
-                        <span className="text-white font-mono text-sm">
+                      <div className="flex items-center justify-between p-2 bg-gray-700 border border-gray-600">
+                        <span className="text-gray-300 text-xs">Pitch</span>
+                        <span className="text-white font-mono text-xs">
                           {pitch === 0 ? '0' : `${pitch > 0 ? '+' : ''}${pitch}`} st
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 bg-gray-700 border border-gray-600">
-                        <span className="text-gray-300 text-sm">Tonalidad Original</span>
-                        <span className="text-white font-mono text-sm">{key}</span>
+                      <div className="flex items-center justify-between p-2 bg-gray-700 border border-gray-600">
+                        <span className="text-gray-300 text-xs">Tonalidad Original</span>
+                        <span className="text-white font-mono text-xs">{key}</span>
                       </div>
                       
-                      <div className="flex items-center justify-between p-3 bg-gray-700 border border-gray-600">
-                        <span className="text-gray-300 text-sm">Tonalidad Actual</span>
-                        <span className="text-white font-mono text-sm">
+                      <div className="flex items-center justify-between p-2 bg-gray-700 border border-gray-600">
+                        <span className="text-gray-300 text-xs">Tonalidad Actual</span>
+                        <span className="text-white font-mono text-xs">
                           {(() => {
                             if (key === '-' || pitch === 0) return key
                             
@@ -778,15 +778,15 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                     </div>
 
                     {/* Columna 2 - Volumen y Botones */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {/* Control de Volumen Horizontal */}
-                      <div className="bg-black p-4 border-2 border-black">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            <Volume2 className="w-5 h-5 text-white" />
-                            <span className="text-white font-semibold">Volumen</span>
+                      <div className="bg-black p-3 border-2 border-black">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-1.5">
+                            <Volume2 className="w-4 h-4 text-white" />
+                            <span className="text-white font-semibold text-sm">Volumen</span>
                           </div>
-                          <span className="text-white font-bold text-lg">{volume}%</span>
+                          <span className="text-white font-bold text-base">{volume}%</span>
                         </div>
                         <input
                           type="range"
@@ -801,22 +801,22 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                       </div>
 
                       {/* Botones de Acción */}
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <button
                           onClick={resetAll}
-                          className="w-full bg-gray-600 hover:bg-gray-500 text-white py-3 transition-colors flex items-center justify-center space-x-2 border border-gray-600"
+                          className="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 transition-colors flex items-center justify-center space-x-1.5 border border-gray-600"
                         >
-                          <RotateCcw className="w-4 h-4" />
-                          <span className="text-sm">Resetear Todo</span>
+                          <RotateCcw className="w-3 h-3" />
+                          <span className="text-xs">Resetear Todo</span>
                         </button>
 
                         <button
                           onClick={exportProcessedAudio}
                           disabled={!audioUrl}
-                          className="w-full bg-white hover:bg-gray-200 disabled:bg-gray-600 text-black py-3 transition-colors flex items-center justify-center space-x-2 border border-gray-600"
+                          className="w-full bg-white hover:bg-gray-200 disabled:bg-gray-600 text-black py-2 transition-colors flex items-center justify-center space-x-1.5 border border-gray-600"
                         >
-                          <Download className="w-4 h-4" />
-                          <span className="text-sm">Exportar Audio</span>
+                          <Download className="w-3 h-3" />
+                          <span className="text-xs">Exportar Audio</span>
                         </button>
                       </div>
                     </div>
