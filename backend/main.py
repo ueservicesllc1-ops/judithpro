@@ -1249,8 +1249,8 @@ async def extract_youtube_audio(request: Request):
         video_id = video_id_match.group(1)
         print(f"[YouTube API] Video ID: {video_id}")
         
-        # Obtener API key de variable de entorno
-        rapidapi_key = os.getenv('RAPIDAPI_KEY')
+        # Obtener API key de variable de entorno o usar la key por defecto
+        rapidapi_key = os.getenv('RAPIDAPI_KEY', 'e705150786msh8476429dbbcccc4p158049jsn4c2e3e6a6d4f')
         if not rapidapi_key:
             # Fallback: usar yt-dlp directamente
             print("[YouTube API] No RAPIDAPI_KEY found, usando yt-dlp")
