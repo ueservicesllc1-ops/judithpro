@@ -453,49 +453,49 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
       <AdminModalLabel modalName="PitchTempoModal" />
       <div className="bg-gray-900 w-[90vw] h-[90vh] mx-4 flex flex-col border border-gray-600">
         {/* Header */}
-        <div className="bg-black h-16 flex items-center justify-between px-6 border-b border-gray-600">
-          <div className="flex items-center space-x-4">
-            <Music className="w-6 h-6 text-white" />
-            <h2 className="text-xl font-bold text-white">Pitch & Tempo Control</h2>
+        <div className="bg-black h-12 flex items-center justify-between px-4 border-b border-gray-600">
+          <div className="flex items-center space-x-3">
+            <Music className="w-5 h-5 text-white" />
+            <h2 className="text-lg font-bold text-white">Pitch & Tempo Control</h2>
           </div>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Contenido Principal */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          <div className="space-y-6">
+        <div className="flex-1 p-4 overflow-y-auto">
+          <div className="space-y-4">
             
             {/* Sección superior dividida en dos */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               
               {/* Mitad izquierda - Tonalidad Detectada */}
-              <div className="bg-gray-800 p-4 border border-gray-600">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-white flex items-center">
-                    <Music className="w-4 h-4 mr-2 text-white" />
+              <div className="bg-gray-800 p-3 border border-gray-600">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold text-white flex items-center">
+                    <Music className="w-3 h-3 mr-1.5 text-white" />
                     Tonalidad Detectada
                   </h3>
                   {isAnalyzing && (
-                    <Loader className="w-4 h-4 animate-spin text-white" />
+                    <Loader className="w-3 h-3 animate-spin text-white" />
                   )}
                 </div>
-                <div className="text-center p-3 bg-gray-700 border border-gray-600">
-                  <div className="text-2xl font-bold text-white">
+                <div className="text-center p-2 bg-gray-700 border border-gray-600">
+                  <div className="text-xl font-bold text-white">
                     {key === '-' ? 'No detectada' : key}
                   </div>
-                  <div className="text-sm text-gray-400 mt-1">
+                  <div className="text-xs text-gray-400 mt-0.5">
                     BPM: {detectedBpm > 0 ? detectedBpm.toFixed(0) : 'No detectado'}
                   </div>
                 </div>
               </div>
 
               {/* Mitad derecha - Subir Canción */}
-              <div className="bg-gray-800 p-4 border border-gray-600">
+              <div className="bg-gray-800 p-3 border border-gray-600">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -503,8 +503,8 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
                   onChange={handleFileSelect}
                   className="hidden"
                 />
-                <h3 className="text-sm font-semibold text-white flex items-center mb-3">
-                  <Upload className="w-4 h-4 mr-2 text-white" />
+                <h3 className="text-xs font-semibold text-white flex items-center mb-2">
+                  <Upload className="w-3 h-3 mr-1.5 text-white" />
                   Subir Canción
                 </h3>
                 {!audioUrl ? (
@@ -544,7 +544,7 @@ const PitchTempoModal: React.FC<PitchTempoModalProps> = ({
             </div>
 
             {/* Controles */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               
               {/* Panel Izquierdo */}
               <div className="space-y-6">
