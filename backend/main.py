@@ -63,8 +63,30 @@ async def root():
 async def health_check():
     return {"status": "OK", "message": "Backend is running"}
 
+# Endpoints de separación (múltiples rutas para compatibilidad)
 @app.post("/api/separate-demucs")
 async def separate_with_demucs(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    separation_type: str = Form("vocals-instrumental"),
+    hi_fi: str = Form("false"),
+    separation_options: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None)
+):
+    return await separate_audio_handler(background_tasks, file, separation_type, hi_fi, separation_options, user_id)
+
+@app.post("/separate")
+async def separate_alias(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    separation_type: str = Form("vocals-instrumental"),
+    hi_fi: str = Form("false"),
+    separation_options: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None)
+):
+    return await separate_audio_handler(background_tasks, file, separation_type, hi_fi, separation_options, user_id)
+
+async def separate_audio_handler(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     separation_type: str = Form("vocals-instrumental"),
@@ -223,14 +245,12 @@ async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = No
         # Detectar key (tonalidad) y acordes
         try:
             from chord_analyzer import ChordAnalyzer
+            from collections import Counter
             analyzer = ChordAnalyzer()
             
             # Analizar acordes
             print(f"[PROCESS] Analizando acordes...")
             chords_list = analyzer.analyze_chords(task.file_path)
-            
-            # Analizar key
-            key_result = analyzer.analyze_key(task.file_path)
             
             # Convertir acordes a dict
             chords_data = [
@@ -245,14 +265,60 @@ async def process_audio(task: ProcessingTask, custom_tracks: Optional[Dict] = No
                 for chord in chords_list
             ]
             
-            keyInfo_data = {
-                "key": key_result.key if key_result else "Unknown",
-                "mode": key_result.mode if key_result else "major",
-                "confidence": float(key_result.confidence) if key_result else 0.0,
-                "tonic": key_result.tonic if key_result else "Unknown"
-            } if key_result else None
+            # Detectar key basándose en la escala (más preciso)
+            if len(chords_list) > 0:
+                # Definir escalas diatónicas (7 acordes por tonalidad)
+                # Formato: tonalidad -> [I, ii, iii, IV, V, vi, vii°]
+                major_scales = {
+                    'C': ['C', 'Dm', 'Em', 'F', 'G', 'Am', 'Bdim'],
+                    'C#': ['C#', 'D#m', 'E#m', 'F#', 'G#', 'A#m', 'B#dim'],
+                    'D': ['D', 'Em', 'F#m', 'G', 'A', 'Bm', 'C#dim'],
+                    'D#': ['D#', 'Fm', 'Gm', 'G#', 'A#', 'Cm', 'Ddim'],
+                    'E': ['E', 'F#m', 'G#m', 'A', 'B', 'C#m', 'D#dim'],
+                    'F': ['F', 'Gm', 'Am', 'A#', 'C', 'Dm', 'Edim'],
+                    'F#': ['F#', 'G#m', 'A#m', 'B', 'C#', 'D#m', 'E#dim'],
+                    'G': ['G', 'Am', 'Bm', 'C', 'D', 'Em', 'F#dim'],
+                    'G#': ['G#', 'A#m', 'Cm', 'C#', 'D#', 'Fm', 'Gdim'],
+                    'A': ['A', 'Bm', 'C#m', 'D', 'E', 'F#m', 'G#dim'],
+                    'A#': ['A#', 'Cm', 'Dm', 'D#', 'F', 'Gm', 'Adim'],
+                    'B': ['B', 'C#m', 'D#m', 'E', 'F#', 'G#m', 'A#dim']
+                }
+                
+                # Extraer acordes únicos detectados
+                detected_chords = set(chord.chord for chord in chords_list)
+                
+                # Calcular coincidencias con cada escala
+                best_match_key = None
+                best_match_score = 0
+                
+                for scale_key, scale_chords in major_scales.items():
+                    # Contar cuántos acordes detectados están en esta escala
+                    matches = sum(1 for chord in detected_chords if chord in scale_chords)
+                    score = matches / len(detected_chords) if detected_chords else 0
+                    
+                    if score > best_match_score:
+                        best_match_score = score
+                        best_match_key = scale_key
+                
+                key = best_match_key if best_match_key else "C"
+                keyInfo_data = {
+                    "key": key,
+                    "mode": "major",
+                    "confidence": best_match_score,
+                    "tonic": key
+                }
+                print(f"[PROCESS] Key detectada por escala: {key} major (coincidencia: {best_match_score:.2f})")
+            else:
+                # Fallback: usar análisis espectral
+                key_result = analyzer.analyze_key(task.file_path)
+                key = key_result.key if key_result else "E"
+                keyInfo_data = {
+                    "key": key_result.key if key_result else "Unknown",
+                    "mode": key_result.mode if key_result else "major",
+                    "confidence": float(key_result.confidence) if key_result else 0.0,
+                    "tonic": key_result.tonic if key_result else "Unknown"
+                } if key_result else None
             
-            key = key_result.key if key_result else "E"
             print(f"[PROCESS] Acordes detectados: {len(chords_data)}, Key: {key}")
         except Exception as e:
             print(f"[PROCESS] Error detectando acordes/key: {e}")
@@ -330,7 +396,19 @@ async def upload_stems_to_b2(stems: Dict[str, str], task_id: str) -> Dict[str, s
         
     except Exception as e:
         print(f"ERROR uploading stems to B2: {e}")
-        return stems  # Return local paths as fallback
+        # Si falla B2, convertir rutas locales a URLs del backend
+        backend_url = os.getenv("BACKEND_URL", os.getenv("NEXT_PUBLIC_BACKEND_URL", "http://localhost:8000"))
+        fallback_urls = {}
+        for stem_name, stem_path in stems.items():
+            # Convertir ruta absoluta a relativa desde backend
+            try:
+                rel_path = Path(stem_path).relative_to(Path.cwd())
+                stem_url = f"{backend_url}/audio/{rel_path}".replace("\\", "/")
+                fallback_urls[stem_name] = stem_url
+                print(f"Fallback URL for {stem_name}: {stem_url}")
+            except:
+                fallback_urls[stem_name] = f"{backend_url}/audio/{stem_path}".replace("\\", "/")
+        return fallback_urls
 
 @app.get("/debug/tasks")
 async def debug_tasks():
