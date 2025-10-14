@@ -60,8 +60,12 @@ async def startup_event():
 async def root():
     return {"message": "Moises Clone API", "status": "running"}
 
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
+    return {"status": "OK", "message": "Backend is running"}
+
+@app.get("/api/health")
+async def health_check_api():
     return {"status": "OK", "message": "Backend is running"}
 
 # Endpoints de separación (múltiples rutas para compatibilidad)
