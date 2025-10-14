@@ -103,8 +103,8 @@ export const createMusicCovers = (
   // Categoría: Efectos
   {
     id: 'tempo-change',
-    title: 'Cambio de Tempo',
-    description: 'Acelera o ralentiza la reproducción',
+    title: 'Pitch & Tempo Control',
+    description: 'Cambia tempo y tono del audio',
     icon: Play,
     bgColor: 'linear-gradient(135deg, #06B6D4, #0891B2, #0E7490)',
     textColor: 'white',
@@ -112,17 +112,17 @@ export const createMusicCovers = (
     gradient: 'linear-gradient(135deg, #06B6D4, #0891B2, #0E7490)',
     action: onTempoChange
   },
-  {
-    id: 'pitch-change',
-    title: 'Cambio de Tono',
-    description: 'Cambia el tono sin afectar el tempo',
-    icon: Volume2,
-    bgColor: 'linear-gradient(135deg, #84CC16, #65A30D, #4D7C0F)',
-    textColor: 'white',
-    color: '#84CC16',
-    gradient: 'linear-gradient(135deg, #84CC16, #65A30D, #4D7C0F)',
-    action: onPitchChange
-  },
+  // {
+  //   id: 'pitch-change',
+  //   title: 'Cambio de Tono',
+  //   description: 'Cambia el tono sin afectar el tempo',
+  //   icon: Volume2,
+  //   bgColor: 'linear-gradient(135deg, #84CC16, #65A30D, #4D7C0F)',
+  //   textColor: 'white',
+  //   color: '#84CC16',
+  //   gradient: 'linear-gradient(135deg, #84CC16, #65A30D, #4D7C0F)',
+  //   action: onPitchChange
+  // },
   
   // Categoría: Reproducción
   {
