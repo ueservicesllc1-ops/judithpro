@@ -1944,12 +1944,16 @@ export default function Home() {
               {/* Área fija de controles a la izquierda */}
               <div className="w-40 bg-gray-700 border-r border-gray-600 flex flex-col flex-shrink-0">
                 {(() => {
-                  const tracks = selectedSong?.stems ? Object.entries(selectedSong.stems) : [];
+                  const tracks = selectedSong?.stems 
+                    ? Object.entries(selectedSong.stems).filter(([_, url]) => url && url.trim() !== '')
+                    : [];
                   
                   return tracks.length > 0;
                 })() ? (
                   (() => {
-                    const tracks = selectedSong?.stems ? Object.entries(selectedSong.stems) : [];
+                    const tracks = selectedSong?.stems 
+                      ? Object.entries(selectedSong.stems).filter(([_, url]) => url && url.trim() !== '')
+                      : [];
                     
                     
                     return tracks;
@@ -2094,13 +2098,17 @@ export default function Home() {
               <div className="flex-1 overflow-x-auto overflow-y-hidden">
                 <div className="h-full flex flex-col min-w-full">
                   {(() => {
-                    const tracks = selectedSong?.stems ? Object.entries(selectedSong.stems) : [];
+                    const tracks = selectedSong?.stems 
+                      ? Object.entries(selectedSong.stems).filter(([_, url]) => url && url.trim() !== '')
+                      : [];
                     
                     
                     return tracks.length > 0;
                   })() ? (
                   (() => {
-                    const tracks = selectedSong?.stems ? Object.entries(selectedSong.stems) : [];
+                    const tracks = selectedSong?.stems 
+                      ? Object.entries(selectedSong.stems).filter(([_, url]) => url && url.trim() !== '')
+                      : [];
                     
                     
                     return tracks;
