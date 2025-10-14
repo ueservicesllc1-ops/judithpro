@@ -1068,6 +1068,37 @@ async def analyze_audio(file: UploadFile = File(...)):
         print(f"Error analyzing audio: {e}")
         raise HTTPException(status_code=500, detail=f"Error analyzing audio: {str(e)}")
 
+@app.post("/api/analyze-key")
+async def analyze_key_endpoint(file: UploadFile = File(...)):
+    """Analiza la tonalidad de un archivo de audio"""
+    try:
+        temp_path = f"temp_analysis/{file.filename}"
+        os.makedirs("temp_analysis", exist_ok=True)
+        
+        with open(temp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        
+        from chord_analyzer import ChordAnalyzer
+        analyzer = ChordAnalyzer()
+        key_result = analyzer.analyze_key(temp_path)
+        
+        os.remove(temp_path)
+        
+        if key_result:
+            return {
+                "success": True,
+                "key": key_result.key,
+                "mode": key_result.mode,
+                "confidence": float(key_result.confidence),
+                "tonic": key_result.tonic
+            }
+        else:
+            return {"success": False, "error": "No se pudo detectar la tonalidad"}
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 async def extract_with_ytdlp(youtube_url: str, video_id: str):
     """Extraer audio usando yt-dlp"""
     try:
