@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react'
 import { X, Upload, Music2, Loader2 } from 'lucide-react'
 import AdminModalLabel from './AdminModalLabel'
+import { getBackendUrl } from '@/lib/config'
 
 interface ChordAnalysisModalProps {
   isOpen: boolean
@@ -31,7 +32,8 @@ const ChordAnalysisModal: React.FC<ChordAnalysisModalProps> = ({ isOpen, onClose
       const formData = new FormData()
       formData.append('file', file)
       
-      const uploadResponse = await fetch('http://localhost:8000/api/analyze-chords', {
+      const backendUrl = getBackendUrl()
+      const uploadResponse = await fetch(`${backendUrl}/api/analyze-chords`, {
         method: 'POST',
         body: formData
       })
@@ -51,7 +53,7 @@ const ChordAnalysisModal: React.FC<ChordAnalysisModalProps> = ({ isOpen, onClose
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000)) // Esperar 1 segundo
         
-        const statusResponse = await fetch(`http://localhost:8000/api/chord-analysis/${taskId}`)
+        const statusResponse = await fetch(`${backendUrl}/api/chord-analysis/${taskId}`)
         const statusData = await statusResponse.json()
         
         console.log(`Intento ${attempts + 1}: Status =`, statusData.status, `Progress =`, statusData.progress)
