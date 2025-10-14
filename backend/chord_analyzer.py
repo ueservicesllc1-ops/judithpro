@@ -249,13 +249,13 @@ class ChordAnalyzer:
         return unique_chords
 
     def analyze_key(self, file_path: str) -> Optional[KeyResult]:
-        """Analiza la tonalidad de la canción"""
+        """Analiza la tonalidad de la canción con algoritmo mejorado"""
         try:
             # Cargar audio
             y, sr = librosa.load(file_path, sr=22050)
             
-            # Extraer características cromáticas
-            chroma = librosa.feature.chroma_stft(y=y, sr=sr)
+            # Extraer características cromáticas con mejor resolución
+            chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=512)
             
             # Promediar características cromáticas
             avg_chroma = np.mean(chroma, axis=1)
@@ -263,27 +263,50 @@ class ChordAnalyzer:
             # Normalizar
             avg_chroma = avg_chroma / (np.sum(avg_chroma) + 1e-8)
             
+            # Perfiles de Krumhansl-Schmuckler para tonalidades
+            major_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+            minor_profile = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+            
+            # Normalizar perfiles
+            major_profile = major_profile / np.sum(major_profile)
+            minor_profile = minor_profile / np.sum(minor_profile)
+            
             # Probar cada tonalidad
             best_key = None
-            best_correlation = -1
+            best_score = -float('inf')
             
-            for key_name, profiles in self.key_profiles.items():
-                for mode, profile in profiles.items():
-                    correlation = np.corrcoef(avg_chroma, profile)[0, 1]
-                    
-                    if np.isnan(correlation):
-                        correlation = 0
-                    
-                    if correlation > best_correlation:
-                        best_correlation = correlation
-                        best_key = KeyResult(
-                            key=key_name,
-                            mode=mode,
-                            confidence=max(0, correlation),
-                            tonic=key_name
-                        )
+            for shift in range(12):
+                # Rotar el perfil para cada tonalidad
+                major_rotated = np.roll(major_profile, shift)
+                minor_rotated = np.roll(minor_profile, shift)
+                
+                # Calcular correlación para mayor
+                major_score = np.correlate(avg_chroma, major_rotated)[0]
+                
+                # Calcular correlación para menor
+                minor_score = np.correlate(avg_chroma, minor_rotated)[0]
+                
+                # Verificar mayor
+                if major_score > best_score:
+                    best_score = major_score
+                    best_key = KeyResult(
+                        key=self.note_names[shift],
+                        mode='major',
+                        confidence=max(0, min(1, major_score)),
+                        tonic=self.note_names[shift]
+                    )
+                
+                # Verificar menor
+                if minor_score > best_score:
+                    best_score = minor_score
+                    best_key = KeyResult(
+                        key=self.note_names[shift],
+                        mode='minor',
+                        confidence=max(0, min(1, minor_score)),
+                        tonic=self.note_names[shift]
+                    )
             
-            return best_key if best_correlation > 0.2 else None
+            return best_key
             
         except Exception as e:
             print(f"Error analyzing key: {e}")

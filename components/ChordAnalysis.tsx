@@ -39,6 +39,8 @@ interface ChordAnalysisProps {
   songBPM?: number;
   stems?: { [key: string]: string | undefined };
   songId?: string;
+  songChords?: Chord[];
+  songKeyInfo?: KeyInfo;
 }
 
 const ChordAnalysis: React.FC<ChordAnalysisProps> = ({
@@ -53,10 +55,12 @@ const ChordAnalysis: React.FC<ChordAnalysisProps> = ({
   audioElements = {},
   songBPM,
   stems = {},
-  songId
+  songId,
+  songChords,
+  songKeyInfo
 }) => {
-  const [chords, setChords] = useState<Chord[]>([]);
-  const [keyInfo, setKeyInfo] = useState<KeyInfo | null>(null);
+  const [chords, setChords] = useState<Chord[]>(songChords || []);
+  const [keyInfo, setKeyInfo] = useState<KeyInfo | null>(songKeyInfo || null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null);
@@ -208,62 +212,8 @@ const ChordAnalysis: React.FC<ChordAnalysisProps> = ({
     return activeChord || null;
   };
 
-  // Iniciar análisis de acordes
-  const startChordAnalysis = async () => {
-    if (!audioUrl) return;
-    
-    console.log('Starting chord analysis with URL:', audioUrl);
-    setIsAnalyzing(true);
-    setAnalysisProgress(0);
-
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
-      // Iniciar análisis usando URL
-      const analysisResponse = await fetch(`${backendUrl}/api/analyze-chords-url`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: audioUrl }),
-      });
-
-      const { task_id } = await analysisResponse.json();
-  
-  // Polling para obtener resultados
-  const pollResults = async () => {
-    try {
-      const response = await fetch(`${backendUrl}/api/chord-analysis/${task_id}`);
-      const result = await response.json();
-      
-      console.log('Chord analysis result:', result);
-      
-      if (result.status === 'completed') {
-        setChords(result.chords || []);
-        setKeyInfo(result.key || null);
-        setAnalysisProgress(100);
-        setIsAnalyzing(false);
-        console.log('Chords found:', result.chords);
-        console.log('Key info:', result.key);
-      } else if (result.status === 'failed') {
-        console.error('Chord analysis failed:', result.error);
-        setIsAnalyzing(false);
-      } else {
-        setAnalysisProgress(result.progress || 0);
-        setTimeout(pollResults, 2000); // Poll cada 2 segundos
-      }
-    } catch (error) {
-      console.error('Error polling chord analysis:', error);
-      setIsAnalyzing(false);
-    }
-  };
-
-  pollResults();
-} catch (error) {
-  console.error('Error starting chord analysis:', error);
-  setIsAnalyzing(false);
-}
-};
+  // Los acordes ya vienen detectados desde el backend al separar la canción
+  // No es necesario analizar de nuevo aquí
 
 // Funciones para manejar los diferentes covers
 const handleChordAnalysis = () => {
@@ -280,12 +230,9 @@ const handleChordAnalysis = () => {
   if (showPitchShifter) {
     setShowPitchShifter(false);
   }
+  // Solo alternar visibilidad de acordes - NO volver a analizar
   setShowChordsInLED(!showChordsInLED);
-  
-  // Si se está activando, iniciar análisis si no hay acordes
-  if (!showChordsInLED && chords.length === 0) {
-  startChordAnalysis();
-  }
+  console.log('Mostrando acordes en LED:', !showChordsInLED, 'Acordes disponibles:', chords.length);
 };
 
 const handleMetronome = () => {
@@ -551,9 +498,9 @@ return (
               </div>
             )}
             <button
-              onClick={startChordAnalysis}
-              disabled={isAnalyzing || !audioUrl}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+              onClick={() => console.log('Los acordes se detectan automáticamente al separar la canción')}
+              disabled={true}
+              className="bg-gray-600 text-gray-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 cursor-not-allowed"
             >
               {isAnalyzing ? (
                 <>
@@ -1787,10 +1734,17 @@ return (
                           currentTime >= chord.start_time && currentTime <= chord.end_time
                         );
                         
-                        const previous2Chord = currentIndex > 1 ? chords[currentIndex - 2] : null;
-                        const previousChord = currentIndex > 0 ? chords[currentIndex - 1] : null;
-                        const nextChord = currentIndex < chords.length - 1 ? chords[currentIndex + 1] : null;
-                        const next2Chord = currentIndex < chords.length - 2 ? chords[currentIndex + 2] : null;
+                        // Si no hay acorde en currentTime, buscar el más cercano
+                        const fallbackIndex = currentIndex >= 0 ? currentIndex : 
+                          chords.findIndex(chord => chord.start_time > currentTime) - 1;
+                        
+                        const activeIndex = currentIndex >= 0 ? currentIndex : Math.max(0, fallbackIndex);
+                        
+                        const previous2Chord = activeIndex > 1 ? chords[activeIndex - 2] : null;
+                        const previousChord = activeIndex > 0 ? chords[activeIndex - 1] : null;
+                        const currentChordToShow = chords[activeIndex] || null;
+                        const nextChord = activeIndex < chords.length - 1 ? chords[activeIndex + 1] : null;
+                        const next2Chord = activeIndex < chords.length - 2 ? chords[activeIndex + 2] : null;
                         
                         return (
                           <div className="w-full h-full flex items-center justify-center gap-12 px-4">
@@ -1826,7 +1780,7 @@ return (
                                   textShadow: '0 0 20px rgba(34, 197, 94, 0.8), 0 0 10px rgba(34, 197, 94, 0.5)'
                                 }}
                               >
-                                {currentChord ? currentChord.chord : '--'}
+                                {currentChordToShow ? currentChordToShow.chord : '--'}
                               </div>
                               
                               {/* Tonalidad compacta */}
@@ -1871,9 +1825,9 @@ return (
                           NO HAY ACORDES DETECTADOS
                         </div>
                         <button
-                          onClick={startChordAnalysis}
-                          disabled={!audioUrl}
-                          className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-green-400 px-6 py-2 rounded text-xs font-mono"
+                          onClick={() => console.log('Los acordes se detectan automáticamente al separar la canción')}
+                          disabled={true}
+                          className="bg-gray-800 text-gray-600 px-6 py-2 rounded text-xs font-mono cursor-not-allowed"
                           style={{
                             border: '1px solid rgba(34, 197, 94, 0.5)',
                             boxShadow: '0 0 8px rgba(34, 197, 94, 0.3)'
