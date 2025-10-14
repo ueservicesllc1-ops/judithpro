@@ -1,4 +1,4 @@
-"""
+﻿"""
 Audio Processor REAL - Demucs + Procesamiento adicional para 10+ tracks
 """
 
@@ -27,60 +27,34 @@ class AudioProcessor:
             if task_callback:
                 task_callback(20, "Starting Demucs AI separation...")
             
-            # Run Demucs command - htdemucs_ft (BALANCE calidad/velocidad para Railway)
+            # Run Demucs command - using the htdemucs model for best quality
             cmd = [
                 "python", "-m", "demucs",
-                "--name", "htdemucs_ft",  # Balance perfecto: buena calidad + rápido
+                "--name", "htdemucs",  # Best quality model
                 "--out", str(output_dir),
                 file_path
             ]
             
-            print(f"🚀 Running Demucs command: {' '.join(cmd)}")
+            print(f"Running Demucs command: {' '.join(cmd)}")
             
             # Update progress: Processing with Demucs
             if task_callback:
                 task_callback(40, "Processing with Demucs AI...")
             
-            # Execute in subprocess con output en tiempo real
+            # Execute in subprocess
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT  # Combinar stderr con stdout
+                stderr=asyncio.subprocess.PIPE
             )
             
-            # Leer output en tiempo real
-            output_lines = []
-            while True:
-                line = await process.stdout.readline()
-                if not line:
-                    break
-                line_text = line.decode().strip()
-                output_lines.append(line_text)
-                print(f"[Demucs] {line_text}")
-                
-                # Actualizar progreso basado en output de Demucs
-                if task_callback and "%" in line_text:
-                    # Demucs muestra progreso como "50%"
-                    try:
-                        import re
-                        match = re.search(r'(\d+)%', line_text)
-                        if match:
-                            demucs_progress = int(match.group(1))
-                            # Mapear progreso de Demucs (0-100) a nuestro rango (40-70)
-                            our_progress = 40 + int(demucs_progress * 0.3)
-                            task_callback(our_progress, f"Demucs: {demucs_progress}%")
-                            print(f"[Progress] Updated: {our_progress}%")
-                    except Exception as e:
-                        print(f"[Progress] Error parsing: {e}")
-            
-            await process.wait()
+            stdout, stderr = await process.communicate()
             
             if process.returncode != 0:
-                error_output = '\n'.join(output_lines[-20:])  # Últimas 20 líneas
-                print(f"Demucs error: {error_output}")
-                raise Exception(f"Demucs error: {error_output}")
+                print(f"Demucs error: {stderr.decode()}")
+                raise Exception(f"Demucs error: {stderr.decode()}")
             
-            print(f"Demucs completed successfully")
+            print(f"Demucs output: {stdout.decode()}")
             
             # Update progress: Demucs completed
             if task_callback:
@@ -91,26 +65,7 @@ class AudioProcessor:
             file_name = Path(file_path).stem
             
             # Demucs creates a folder with the model name
-            # Buscar en todas las subcarpetas posibles según el modelo
-            possible_dirs = [
-                output_dir / "htdemucs_6s" / file_name,
-                output_dir / "htdemucs_6s" / "original",
-                output_dir / "htdemucs" / file_name,
-                output_dir / "htdemucs" / "original",
-                output_dir / "mdx" / file_name,
-                output_dir / "mdx" / "original",
-            ]
-            
-            model_dir = None
-            for dir_path in possible_dirs:
-                if dir_path.exists() and any(dir_path.glob("*.wav")):
-                    model_dir = dir_path
-                    print(f"✅ Found stems in: {model_dir}")
-                    break
-            
-            if not model_dir:
-                print(f"❌ No stems found in any expected directory")
-                raise Exception("Demucs completed but no output files found")
+            model_dir = output_dir / "htdemucs" / file_name
             
             if model_dir.exists():
                 # Map Demucs output to our expected format
@@ -121,18 +76,18 @@ class AudioProcessor:
                     "other.wav": "other"
                 }
                 
-                # Si se solicitaron tracks específicos, solo procesar esos
+                # Si se solicitaron tracks espec├¡ficos, solo procesar esos
                 if requested_tracks:
-                    print(f"🎯 Creating only requested tracks: {requested_tracks}")
+                    print(f"≡ƒÄ» Creating only requested tracks: {requested_tracks}")
                     
                     # Para vocals-instrumental, combinar drums + bass + other
                     if "vocals" in requested_tracks and "instrumental" in requested_tracks:
-                        print(f"🎤 Modo: Vocals + Instrumental")
+                        print(f"≡ƒÄñ Modo: Vocals + Instrumental")
                         # Vocals
                         vocals_path = model_dir / "vocals.wav"
                         if vocals_path.exists():
                             stems["vocals"] = str(vocals_path)
-                            print(f"✅ Found vocals: {vocals_path}")
+                            print(f"Γ£à Found vocals: {vocals_path}")
                         
                         # Instrumental = drums + bass + other
                         instrumental_tracks = []
@@ -161,21 +116,21 @@ class AudioProcessor:
                             instrumental_path = model_dir.parent / "instrumental.wav"
                             sf.write(str(instrumental_path), combined_audio, sr)
                             stems["instrumental"] = str(instrumental_path)
-                            print(f"✅ Created instrumental: {instrumental_path}")
+                            print(f"Γ£à Created instrumental: {instrumental_path}")
                     
                     else:
-                        # 🔥 FIX: Procesar tracks individuales solicitados
-                        print(f"🎵 Modo: Tracks individuales ({len(requested_tracks)} tracks)")
+                        # ≡ƒöÑ FIX: Procesar tracks individuales solicitados
+                        print(f"≡ƒÄ╡ Modo: Tracks individuales ({len(requested_tracks)} tracks)")
                         for stem_file, stem_name in stem_mapping.items():
                             if stem_name in requested_tracks:
                                 stem_path = model_dir / stem_file
                                 if stem_path.exists():
                                     stems[stem_name] = str(stem_path)
-                                    print(f"✅ Found {stem_name}: {stem_path}")
+                                    print(f"Γ£à Found {stem_name}: {stem_path}")
                                 else:
-                                    print(f"⚠️ Track {stem_name} no encontrado en: {stem_path}")
+                                    print(f"ΓÜá∩╕Å Track {stem_name} no encontrado en: {stem_path}")
                         
-                        print(f"✅ Total stems procesados: {len(stems)}")
+                        print(f"Γ£à Total stems procesados: {len(stems)}")
                 
                 else:
                     # Si no se especificaron tracks, devolver todos
@@ -218,7 +173,7 @@ class AudioProcessor:
             return filtered_stems
             
         except Exception as e:
-            print(f"❌ Error in custom track separation: {e}")
+            print(f"Γ¥î Error in custom track separation: {e}")
             raise
     
     async def create_extended_tracks(self, file_path: str, basic_stems: Dict[str, str]) -> Dict[str, str]:
@@ -246,12 +201,12 @@ class AudioProcessor:
             for track_name, track_path in additional_tracks.items():
                 if track_path and Path(track_path).exists():
                     extended_stems[track_name] = track_path
-                    print(f"✅ Created {track_name}: {track_path}")
+                    print(f"Γ£à Created {track_name}: {track_path}")
             
             return extended_stems
             
         except Exception as e:
-            print(f"❌ Error creating extended tracks: {e}")
+            print(f"Γ¥î Error creating extended tracks: {e}")
             return basic_stems
     
     def extract_piano(self, audio: np.ndarray, sr: int, output_dir: Path) -> str:
