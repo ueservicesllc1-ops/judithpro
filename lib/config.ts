@@ -11,11 +11,16 @@ export const getBackendUrl = (): string => {
   // Detección automática basada en el dominio actual (solo en cliente)
   if (typeof window !== 'undefined') {
     const currentDomain = window.location.origin
+    const hostname = window.location.hostname
     
-    // Si estamos en producción (judith.life, railway.app, o run.app)
-    if (currentDomain.includes('judith.life') || currentDomain.includes('railway.app') || currentDomain.includes('run.app')) {
-      // Usar la misma URL del frontend como backend (están en el mismo servidor)
-      return currentDomain
+    // Si estamos en producción (judith.life, railway.app, run.app, o IP)
+    if (currentDomain.includes('judith.life') || 
+        currentDomain.includes('railway.app') || 
+        currentDomain.includes('run.app') ||
+        /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      // Si es IP o dominio de producción, usar el mismo host pero puerto 8000
+      const protocol = window.location.protocol
+      return `${protocol}//${hostname}:8000`
     }
   }
   
