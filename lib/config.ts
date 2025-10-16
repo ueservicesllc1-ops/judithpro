@@ -13,9 +13,13 @@ export const getBackendUrl = (): string => {
     const currentDomain = window.location.origin
     const hostname = window.location.hostname
     
-    // Si estamos en producción (judith.life, railway.app, run.app, o IP)
-    if (currentDomain.includes('judith.life') || 
-        currentDomain.includes('railway.app') || 
+    // Si estamos en judith.life, usar HTTPS
+    if (hostname === 'judith.life' || hostname === 'www.judith.life') {
+      return 'https://judith.life:8000'
+    }
+    
+    // Si estamos en otras producciones (railway.app, run.app, o IP)
+    if (currentDomain.includes('railway.app') || 
         currentDomain.includes('run.app') ||
         /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
       // Si es IP o dominio de producción, usar el mismo host pero puerto 8000

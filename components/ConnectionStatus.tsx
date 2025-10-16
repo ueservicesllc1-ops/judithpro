@@ -13,20 +13,35 @@ export default function ConnectionStatus() {
   useEffect(() => {
     const checkB2Status = async () => {
       try {
-        // En Railway, usar el proxy de Next.js para verificar el backend
-        const response = await fetch('/api/health')
-        const data = await response.json()
-        
-        if (data.status === 'ok') {
-          setB2Status('connected')
-          setB2Error(null)
+        // Solo verificar B2 proxy en localhost
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+          const response = await fetch('http://localhost:3001/api/health', {
+            method: 'GET',
+            signal: AbortSignal.timeout(2000)
+          })
+          const data = await response.json()
+          
+          if (data.status === 'OK') {
+            setB2Status('connected')
+            setB2Error(null)
+          } else {
+            setB2Status('disconnected')
+            setB2Error('B2 Proxy not responding')
+          }
         } else {
-          setB2Status('disconnected')
-          setB2Error('Backend not responding')
+          // En producción, verificar si el backend está online
+          const response = await fetch('/api/health')
+          if (response.ok) {
+            setB2Status('connected')
+            setB2Error(null)
+          } else {
+            setB2Status('disconnected')
+            setB2Error('Backend not responding')
+          }
         }
       } catch (error) {
         setB2Status('disconnected')
-        setB2Error('Backend not running')
+        setB2Error('Connection failed')
       }
     }
 
@@ -40,9 +55,17 @@ export default function ConnectionStatus() {
   useEffect(() => {
     const checkFirebaseStatus = async () => {
       try {
-        // Verificar si Firebase está configurado (simplificado)
-        // Por ahora asumimos que Firebase está conectado si no hay errores
-        setFirebaseStatus('connected')
+        // Verificar si Firebase está configurado y funcionando
+        // Intentar hacer una consulta simple para verificar la conexión
+        const response = await fetch('/api/health')
+        const data = await response.json()
+        
+        // Si el frontend responde, asumimos que Firebase está configurado
+        if (data.status === 'ok') {
+          setFirebaseStatus('connected')
+        } else {
+          setFirebaseStatus('disconnected')
+        }
       } catch (error) {
         setFirebaseStatus('disconnected')
       }
