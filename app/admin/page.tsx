@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Image as ImageIcon, Users, Crown } from 'lucide-react'
+import { ArrowLeft, Image as ImageIcon, Users, Crown, Settings, Clock } from 'lucide-react'
 import { db } from '@/lib/firebase'
-import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore'
+import { collection, getDocs, doc, updateDoc, setDoc, query, orderBy } from 'firebase/firestore'
 import { getUserSongs } from '@/lib/firestore'
 
 interface User {
@@ -20,8 +20,18 @@ export default function AdminPage() {
   const router = useRouter()
   const [showCoverAdmin, setShowCoverAdmin] = useState(false)
   const [showUsersAdmin, setShowUsersAdmin] = useState(false)
+  const [showMaintenanceAdmin, setShowMaintenanceAdmin] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // Estados para configuración de mantenimiento
+  const [maintenanceConfig, setMaintenanceConfig] = useState({
+    isActive: false,
+    startTime: '02:00',
+    endTime: '08:00',
+    message: 'Judith está en mantenimiento para mejorar tu experiencia'
+  })
+  const [saving, setSaving] = useState(false)
 
   const coverList = [
     { id: 1, name: 'Extraer de YouTube', file: 'cover1.jpg', active: true },
@@ -43,6 +53,13 @@ export default function AdminPage() {
       loadUsers()
     }
   }, [showUsersAdmin])
+
+  // Cargar configuración de mantenimiento
+  useEffect(() => {
+    if (showMaintenanceAdmin) {
+      loadMaintenanceConfig()
+    }
+  }, [showMaintenanceAdmin])
 
   const loadUsers = async () => {
     setLoading(true)
@@ -102,6 +119,36 @@ export default function AdminPage() {
     }
   }
 
+  const loadMaintenanceConfig = async () => {
+    try {
+      const configRef = doc(db, 'admin', 'maintenance')
+      const configDoc = await getDocs(collection(db, 'admin'))
+      
+      if (!configDoc.empty) {
+        const configData = configDoc.docs.find(doc => doc.id === 'maintenance')?.data()
+        if (configData) {
+          setMaintenanceConfig(configData)
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando configuración de mantenimiento:', error)
+    }
+  }
+
+  const saveMaintenanceConfig = async () => {
+    setSaving(true)
+    try {
+      const configRef = doc(db, 'admin', 'maintenance')
+      await setDoc(configRef, maintenanceConfig, { merge: true })
+      alert('Configuración de mantenimiento guardada exitosamente')
+    } catch (error) {
+      console.error('Error guardando configuración:', error)
+      alert('Error al guardar la configuración')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
@@ -120,12 +167,12 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <div className="p-8">
-        {!showCoverAdmin && !showUsersAdmin ? (
+        {!showCoverAdmin && !showUsersAdmin && !showMaintenanceAdmin ? (
           /* Dashboard Principal */
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-white mb-8">Opciones de Administración</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Botón Administrar Cover */}
               <button
                 onClick={() => setShowCoverAdmin(true)}
@@ -157,6 +204,24 @@ export default function AdminPage() {
                     <h3 className="text-xl font-bold text-white mb-2">Usuarios</h3>
                     <p className="text-sm text-green-100">
                       Gestionar usuarios y suscripciones
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Botón Mantenimiento */}
+              <button
+                onClick={() => setShowMaintenanceAdmin(true)}
+                className="group relative bg-gradient-to-br from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 p-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-2xl"
+              >
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="p-4 bg-white/10 rounded-full group-hover:bg-white/20 transition-colors">
+                    <Settings className="w-12 h-12 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-2">Mantenimiento</h3>
+                    <p className="text-sm text-orange-100">
+                      Configurar horarios de mantenimiento
                     </p>
                   </div>
                 </div>
@@ -226,7 +291,7 @@ export default function AdminPage() {
               </ul>
             </div>
           </div>
-        ) : (
+        ) : showUsersAdmin ? (
           /* Sección de Administración de Usuarios */
           <div>
             <div className="mb-6">
@@ -341,6 +406,147 @@ export default function AdminPage() {
                 <h3 className="text-gray-400 text-sm mb-2">Usuarios Free</h3>
                 <p className="text-3xl font-bold text-gray-400">{users.filter(u => !u.isPremium).length}</p>
               </div>
+            </div>
+          </div>
+        ) : (
+          /* Sección de Configuración de Mantenimiento */
+          <div>
+            <div className="mb-6">
+              <button
+                onClick={() => setShowMaintenanceAdmin(false)}
+                className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm">Volver al Dashboard</span>
+              </button>
+              <h2 className="text-xl font-bold text-white mb-2">Configuración de Mantenimiento</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                Configura cuándo mostrar el popup de mantenimiento a los usuarios
+              </p>
+            </div>
+
+            {/* Formulario de configuración */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-2xl">
+              <div className="space-y-6">
+                {/* Toggle para activar/desactivar */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Activar Mantenimiento</h3>
+                    <p className="text-gray-400 text-sm">
+                      Mostrar popup de mantenimiento a los usuarios
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={maintenanceConfig.isActive}
+                      onChange={(e) => setMaintenanceConfig({
+                        ...maintenanceConfig,
+                        isActive: e.target.checked
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                  </label>
+                </div>
+
+                {/* Horarios */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      Hora de Inicio
+                    </label>
+                    <input
+                      type="time"
+                      value={maintenanceConfig.startTime}
+                      onChange={(e) => setMaintenanceConfig({
+                        ...maintenanceConfig,
+                        startTime: e.target.value
+                      })}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      Hora de Fin
+                    </label>
+                    <input
+                      type="time"
+                      value={maintenanceConfig.endTime}
+                      onChange={(e) => setMaintenanceConfig({
+                        ...maintenanceConfig,
+                        endTime: e.target.value
+                      })}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Mensaje personalizado */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Mensaje Personalizado
+                  </label>
+                  <textarea
+                    value={maintenanceConfig.message}
+                    onChange={(e) => setMaintenanceConfig({
+                      ...maintenanceConfig,
+                      message: e.target.value
+                    })}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Mensaje que se mostrará a los usuarios durante el mantenimiento"
+                  />
+                </div>
+
+                {/* Vista previa */}
+                <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Vista Previa:</h4>
+                  <div className="text-sm text-gray-400">
+                    <p><strong>Activo:</strong> {maintenanceConfig.isActive ? 'Sí' : 'No'}</p>
+                    <p><strong>Horario:</strong> {maintenanceConfig.startTime} - {maintenanceConfig.endTime}</p>
+                    <p><strong>Mensaje:</strong> {maintenanceConfig.message}</p>
+                  </div>
+                </div>
+
+                {/* Botones de acción */}
+                <div className="flex space-x-4">
+                  <button
+                    onClick={saveMaintenanceConfig}
+                    disabled={saving}
+                    className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? 'Guardando...' : 'Guardar Configuración'}
+                  </button>
+                  
+                  <button
+                    onClick={() => setMaintenanceConfig({
+                      isActive: false,
+                      startTime: '02:00',
+                      endTime: '08:00',
+                      message: 'Judith está en mantenimiento para mejorar tu experiencia'
+                    })}
+                    className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all"
+                  >
+                    Restaurar Valores por Defecto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Información adicional */}
+            <div className="mt-8 bg-blue-900/20 border border-blue-700 rounded-lg p-6">
+              <h3 className="text-blue-400 font-bold mb-2">ℹ️ Información Importante</h3>
+              <ul className="text-blue-200 text-sm space-y-1">
+                <li>• El popup aparecerá automáticamente durante el horario configurado</li>
+                <li>• Los horarios se interpretan en la zona horaria del servidor (EST)</li>
+                <li>• La cuenta regresiva se calcula automáticamente hasta la hora de fin</li>
+                <li>• Puedes activar/desactivar el mantenimiento en cualquier momento</li>
+                <li>• Los cambios se aplican inmediatamente a todos los usuarios</li>
+              </ul>
             </div>
           </div>
         )}

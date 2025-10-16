@@ -39,10 +39,12 @@ import BpmDetectorModal from '@/components/BpmDetectorModal'
 import ChordAnalysisModal from '@/components/ChordAnalysisModal'
 import YoutubeExtractModal from '@/components/YoutubeExtractModal'
 import HeroPopup from '@/components/HeroPopup'
+import MaintenancePopup from '@/components/MaintenancePopup'
 import AdminModalLabel from '@/components/AdminModalLabel'
 // import ChordAnalyzer from '@/components/ChordAnalyzer'
 import { getUserSongs, subscribeToUserSongs, deleteSong, Song } from '@/lib/firestore'
 import { getBackendUrl } from '@/lib/config'
+import { useMaintenanceConfig } from '@/hooks/useMaintenanceConfig'
 // import useAudioCleanup from '@/hooks/useAudioCleanup'
 
 export default function Home() {
@@ -65,6 +67,9 @@ export default function Home() {
   const [showYoutubeExtractModal, setShowYoutubeExtractModal] = useState(false)
   const [showEQInMixer, setShowEQInMixer] = useState(false)
   const [showHeroPopup, setShowHeroPopup] = useState(false)
+  
+  // Hook para configuración de mantenimiento
+  const { showMaintenancePopup, config: maintenanceConfig } = useMaintenanceConfig()
   const [songs, setSongs] = useState<Song[]>([])
   const [songsLoading, setSongsLoading] = useState(true)
   const [showSongModal, setShowSongModal] = useState(false)
@@ -2575,6 +2580,13 @@ export default function Home() {
       <HeroPopup 
         isOpen={showHeroPopup}
         onClose={() => setShowHeroPopup(false)}
+      />
+
+      {/* Maintenance Popup */}
+      <MaintenancePopup 
+        isOpen={showMaintenancePopup}
+        onClose={() => {}}
+        customMessage={maintenanceConfig.message}
       />
 
     </div>
