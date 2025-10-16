@@ -13,7 +13,7 @@ interface MaintenanceConfig {
 
 export const useMaintenanceConfig = () => {
   const [config, setConfig] = useState<MaintenanceConfig>({
-    isActive: true, // Cambiar a true para testing local
+    isActive: true, // Activo para testing
     startTime: '02:00',
     endTime: '08:00',
     message: 'Judith está en mantenimiento para mejorar tu experiencia'
